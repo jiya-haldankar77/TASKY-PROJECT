@@ -18,9 +18,9 @@
         <q-item
           clickable
           v-ripple
-          active
+          to="/dashboard"
           active-class="bg-lime-13 text-black"
-          class="rounded-borders"
+          class="nav-item rounded-borders"
           style="border-radius: 12px; font-weight: 500;"
         >
           <q-item-section avatar>
@@ -29,28 +29,56 @@
           <q-item-section>Dashboard</q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/projects"
+          active-class="bg-lime-13 text-black"
+          class="nav-item rounded-borders"
+          style="border-radius: 12px; font-weight: 500;"
+        >
           <q-item-section avatar>
             <q-icon name="o_folder" />
           </q-item-section>
           <q-item-section>Projects</q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/tasks"
+          active-class="bg-lime-13 text-black"
+          class="nav-item rounded-borders"
+          style="border-radius: 12px; font-weight: 500;"
+        >
           <q-item-section avatar>
             <q-icon name="o_check_circle" />
           </q-item-section>
           <q-item-section>Tasks</q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/resources"
+          active-class="bg-lime-13 text-black"
+          class="nav-item rounded-borders"
+          style="border-radius: 12px; font-weight: 500;"
+        >
           <q-item-section avatar>
             <q-icon name="o_people" />
           </q-item-section>
           <q-item-section>Resources</q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/analytics"
+          active-class="bg-lime-13 text-black"
+          class="nav-item rounded-borders"
+          style="border-radius: 12px; font-weight: 500;"
+        >
           <q-item-section avatar>
             <q-icon name="o_bar_chart" />
           </q-item-section>
@@ -62,7 +90,7 @@
 
       <!-- Bottom Navigation -->
       <q-list class="q-gutter-y-sm" padding>
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item clickable v-ripple class="nav-item rounded-borders">
           <q-item-section avatar>
             <q-icon name="o_notifications" />
           </q-item-section>
@@ -72,14 +100,14 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders">
+        <q-item clickable v-ripple class="nav-item rounded-borders">
           <q-item-section avatar>
             <q-icon name="o_calendar_today" />
           </q-item-section>
           <q-item-section>Calendar</q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="text-grey-4 rounded-borders q-mb-md">
+        <q-item clickable v-ripple class="nav-item rounded-borders q-mb-md">
           <q-item-section avatar>
             <q-icon name="o_settings" />
           </q-item-section>
@@ -101,9 +129,12 @@ const leftDrawerOpen = ref(true);
 </script>
 
 <style scoped>
+.nav-item {
+  color: #bdbdbd;
+}
 .q-item.q-router-link--active, .q-item--active {
   background-color: #d8f760;
-  color: #000;
+  color: #000 !important;
 }
 .bg-lime-13 {
   background-color: #d8f760 !important;
