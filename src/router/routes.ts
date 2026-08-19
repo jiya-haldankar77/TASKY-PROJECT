@@ -6,11 +6,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
       { path: '', redirect: '/dashboard' },
-      { path: 'dashboard', component: () => import('@/pages/IndexPage.vue') },
-      { path: 'projects', component: () => import('@/pages/ProjectsPage.vue') },
-      { path: 'projects/:id', component: () => import('@/pages/ProjectDetailPage.vue') },
-      { path: 'tasks', component: () => import('@/pages/TasksPage.vue') },
-      { path: 'analytics', component: () => import('@/pages/AnalyticsPage.vue') },
+      { path: 'dashboard', component: () => import('@/pages/ProjectManagerPage.vue') },
     ],
   },
 
