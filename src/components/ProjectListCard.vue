@@ -65,8 +65,25 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  priority: string;
+  startDate: string;
+  endDate: string;
+  totalTasks: number;
+  completedTasks: number;
+  progress: number;
+  team: string[];
+  daysLeft: number;
+  avatarColor: string;
+  avatarLetter: string;
+}
+
 const props = defineProps<{
-  project: any;
+  project: Project;
 }>();
 
 const priorityColor = computed(() => {
