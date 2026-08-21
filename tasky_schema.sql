@@ -110,6 +110,45 @@ CREATE TABLE IF NOT EXISTS `project` (
 
 
 -- ============================================================
+-- 4A. PROJECT MEMBERSHIP & WORKSPACE INVITES
+-- ============================================================
+-- A user may join a specific project through a manager-issued code.
+
+CREATE TABLE IF NOT EXISTS `project_member` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id`  INT UNSIGNED NOT NULL,
+  `user_id`     INT UNSIGNED NOT NULL,
+  `added_by`    INT UNSIGNED NOT NULL,
+  `joined_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_project_member` (`project_id`, `user_id`),
+  CONSTRAINT `fk_member_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_member_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_member_added_by` FOREIGN KEY (`added_by`) REFERENCES `user` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `workspace_invite` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `org_id`        INT UNSIGNED NOT NULL,
+  `project_id`    INT UNSIGNED DEFAULT NULL,
+  `email`         VARCHAR(255) DEFAULT NULL,
+  `invite_code`   VARCHAR(40) NOT NULL,
+  `invited_by`    INT UNSIGNED NOT NULL,
+  `accepted_by`   INT UNSIGNED DEFAULT NULL,
+  `expires_at`    DATETIME NOT NULL,
+  `accepted_at`   DATETIME DEFAULT NULL,
+  `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_invite_code` (`invite_code`),
+  INDEX `idx_invite_org` (`org_id`),
+  CONSTRAINT `fk_invite_org` FOREIGN KEY (`org_id`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_invite_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_invite_inviter` FOREIGN KEY (`invited_by`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_invite_accepter` FOREIGN KEY (`accepted_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
 -- 5. PROJECT PHASE
 -- ============================================================
 -- Discussion note: "Creating phases or steps"
