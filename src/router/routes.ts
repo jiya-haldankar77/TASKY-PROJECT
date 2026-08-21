@@ -3,10 +3,34 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('@/layouts/MainLayout.vue'),
+    component: () => import('@/pages/LandingPage.vue'),
+  },
+  {
+    path: '/auth',
+    component: () => import('@/layouts/AuthLayout.vue'),
     children: [
-      { path: '', component: () => import('@/pages/IndexPage.vue') },
-      { path: 'second', component: () => import('@/pages/SecondPage.vue') },
+      { path: '', redirect: '/auth/login' },
+      { path: 'login', component: () => import('@/pages/auth/Login.vue') },
+      { path: 'register/pm', component: () => import('@/pages/auth/RegisterPM.vue') },
+      { path: 'register/employee', component: () => import('@/pages/auth/RegisterEmployee.vue') },
+      { path: 'forgot-password', component: () => import('@/pages/auth/ForgotPassword.vue') },
+      { path: 'reset-password', component: () => import('@/pages/auth/ResetPassword.vue') },
+    ],
+  },
+  {
+    path: '/dashboard',
+    component: () => import('@/layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      { path: '', component: () => import('@/pages/PMDashboard.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'projects', component: () => import('@/pages/Projects.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'projects/:id', component: () => import('@/pages/ProjectDetail.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'tasks', component: () => import('@/pages/Tasks.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'resources', component: () => import('@/pages/Resources.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'analytics', component: () => import('@/pages/Analytics.vue'), meta: { requiresRole: 'pm' } },
+      { path: 'employee-dashboard', component: () => import('@/pages/EmployeeDashboard.vue'), meta: { requiresRole: 'employee' } },
+      { path: 'my-tasks', component: () => import('@/pages/MyTasks.vue'), meta: { requiresRole: 'employee' } },
+      { path: 'work-log', component: () => import('@/pages/WorkLog.vue'), meta: { requiresRole: 'employee' } },
     ],
   },
 
