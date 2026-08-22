@@ -7,15 +7,12 @@
         <q-select v-model="filterMonth" outlined dense :options="['This Month']" style="width: 140px;" bg-color="white" rounded>
           <template v-slot:prepend><q-icon name="o_calendar_today" size="18px" /></template>
         </q-select>
-        <q-select v-model="filterView" outlined dense :options="['View by: List']" style="width: 150px;" bg-color="white" rounded>
-          <template v-slot:prepend><q-icon name="o_format_list_bulleted" size="18px" /></template>
-        </q-select>
       </div>
-      <q-btn v-else flat dense no-caps color="grey-8" label="View All" size="12px" class="bg-grey-2 q-px-sm rounded-borders" style="font-weight: 500;" />
+      <q-btn v-else flat dense no-caps color="grey-8" label="View All" size="12px" class="bg-grey-2 q-px-sm rounded-borders" style="font-weight: 500;" to="/dashboard/resources" />
     </div>
 
     <q-table
-      :rows="resources"
+      :rows="resourceStore.resources"
       :columns="columns"
       row-key="id"
       flat
@@ -23,17 +20,22 @@
       v-model:pagination="pagination"
       :class="compact ? '' : 'full-height-table'"
       :style="compact ? '' : 'flex: 1 1 0;'"
+      :loading="resourceStore.loading"
     >
+      <template v-slot:loading>
+        <q-inner-loading showing color="primary" />
+      </template>
+
       <!-- Resource Column -->
       <template v-slot:body-cell-resource="props">
         <q-td :props="props" style="width: 200px;">
           <div class="row items-center no-wrap">
             <q-avatar size="32px" class="q-mr-sm">
-              <img :src="props.row.avatar" />
+              <img :src="props.row.avatar || `https://i.pravatar.cc/150?img=${props.row.id}`" />
             </q-avatar>
             <div class="column">
-              <div class="text-weight-bold" style="font-size: 13px; color: #333;">{{ props.row.name }}</div>
-              <div class="text-caption text-grey-7" style="font-size: 11px;">{{ props.row.title }}</div>
+              <div class="text-weight-bold" style="font-size: 13px; color: #333;">{{ props.row.first_name }} {{ props.row.last_name }}</div>
+              <div class="text-caption text-grey-7" style="font-size: 11px;">{{ formatRole(props.row.role_name) }}</div>
             </div>
           </div>
         </q-td>
@@ -42,7 +44,7 @@
       <!-- Role Column -->
       <template v-slot:body-cell-role="props">
         <q-td :props="props">
-          <div class="text-grey-8" style="font-size: 13px;">{{ props.row.role }}</div>
+          <div class="text-grey-8" style="font-size: 13px;">{{ formatRole(props.row.role_name) }}</div>
         </q-td>
       </template>
 
@@ -50,8 +52,8 @@
       <template v-slot:body-cell-workload="props">
         <q-td :props="props" style="width: 120px;">
           <div class="column">
-            <div class="text-weight-bold text-grey-8 q-mb-xs" style="font-size: 12px;">{{ props.row.workloadValue }}h / 130h</div>
-            <q-linear-progress :value="props.row.workloadValue / 130" :color="getUtilizationColor(props.row.utilization)" size="3px" class="rounded-borders" />
+            <div class="text-weight-bold text-grey-8 q-mb-xs" style="font-size: 12px;">{{ props.row.estimated_hours }}h / 160h</div>
+            <q-linear-progress :value="(props.row.utilization || 0) / 100" :color="getUtilizationColor(props.row.utilization)" size="3px" class="rounded-borders" />
           </div>
         </q-td>
       </template>
@@ -60,7 +62,7 @@
       <template v-slot:body-cell-utilization="props">
         <q-td :props="props">
           <div class="text-weight-bold" :class="`text-${getUtilizationColor(props.row.utilization)}`" style="font-size: 13px;">
-            {{ props.row.utilization }}%
+            {{ props.row.utilization || 0 }}%
           </div>
         </q-td>
       </template>
@@ -68,7 +70,7 @@
       <!-- Status Column -->
       <template v-slot:body-cell-status="props">
         <q-td :props="props">
-          <q-badge :color="`${getStatusColor(props.row.status)}-1`" :text-color="getStatusColor(props.row.status)" :label="props.row.status" class="q-px-sm q-py-xs text-weight-bold rounded-borders" style="font-size: 10px;" />
+          <q-badge :color="`${getStatusColor(props.row.workload_status)}-1`" :text-color="getStatusColor(props.row.workload_status)" :label="formatName(props.row.workload_status)" class="q-px-sm q-py-xs text-weight-bold rounded-borders" style="font-size: 10px;" />
         </q-td>
       </template>
 
@@ -76,7 +78,7 @@
       <template v-slot:body-cell-tasks="props">
         <q-td :props="props">
           <div class="column items-center">
-            <div class="text-weight-bold text-grey-8" style="font-size: 13px;">{{ props.row.tasks }}</div>
+            <div class="text-weight-bold text-grey-8" style="font-size: 13px;">{{ props.row.task_count || 0 }}</div>
             <div class="text-caption text-grey-6" style="font-size: 10px;">active</div>
           </div>
         </q-td>
@@ -86,9 +88,8 @@
       <template v-slot:body-cell-projects="props">
         <q-td :props="props">
           <div class="row items-center justify-center q-gutter-x-xs">
-            <q-avatar v-for="(p, i) in props.row.projects" :key="i" :color="p.color" text-color="white" size="20px" style="font-size: 10px; font-weight: bold;">
-              {{ p.letter }}
-            </q-avatar>
+            <div v-if="props.row.project_count > 0" class="text-weight-bold">{{ props.row.project_count }} projects</div>
+            <div v-else class="text-grey-5">-</div>
           </div>
         </q-td>
       </template>
@@ -98,15 +99,22 @@
         <q-td :props="props">
           <div class="row items-center justify-center q-gutter-x-xs no-wrap">
             <q-btn flat round dense icon="visibility" color="indigo" size="10px" class="bg-indigo-1" />
-            <q-btn flat round dense icon="more_vert" color="grey-7" size="10px" class="bg-grey-2" />
           </div>
         </q-td>
+      </template>
+
+      <!-- Empty state -->
+      <template v-slot:no-data>
+        <div class="full-width row flex-center text-grey-6 q-pa-xl">
+          <q-icon size="2em" name="person_off" />
+          <span class="q-ml-sm">No resources found.</span>
+        </div>
       </template>
 
       <!-- Custom Bottom / Pagination -->
       <template v-slot:bottom v-if="!compact">
         <div class="row items-center justify-between text-grey-7 full-width q-py-sm" style="font-size: 13px; border-top: 1px solid #f0f0f0;">
-          <div>Showing {{ showingStart }} to {{ showingEnd }} of {{ resources.length }} resources</div>
+          <div>Showing {{ showingStart }} to {{ showingEnd }} of {{ resourceStore.resources.length }} resources</div>
           <div class="row items-center q-gutter-x-sm">
             <span>Rows per page:</span>
             <q-select v-model="pagination.rowsPerPage" outlined dense :options="[6, 10, 20]" class="q-mr-md bg-white" style="width: 70px;" rounded @update:model-value="pagination.page = 1" />
@@ -123,6 +131,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { QTableProps } from 'quasar';
+import { useResourceStore } from '../stores/resourceStore';
 
 const props = defineProps({
   compact: {
@@ -131,17 +140,17 @@ const props = defineProps({
   }
 });
 
+const resourceStore = useResourceStore();
 const filterMonth = ref('This Month');
-const filterView = ref('View by: List');
 
 const baseColumns: QTableProps['columns'] = [
-  { name: 'resource', label: 'Resource', field: 'name', align: 'left', sortable: true },
-  { name: 'role', label: 'Role', field: 'role', align: 'left', sortable: true },
-  { name: 'workload', label: 'Workload', field: 'workloadValue', align: 'left', sortable: true },
+  { name: 'resource', label: 'Resource', field: 'first_name', align: 'left', sortable: true },
+  { name: 'role', label: 'Role', field: 'role_name', align: 'left', sortable: true },
+  { name: 'workload', label: 'Workload', field: 'estimated_hours', align: 'left', sortable: true },
   { name: 'utilization', label: 'Utilization', field: 'utilization', align: 'center', sortable: true },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-  { name: 'tasks', label: 'Tasks', field: 'tasks', align: 'center', sortable: true },
-  { name: 'projects', label: 'Projects', field: 'projects', align: 'center' },
+  { name: 'status', label: 'Status', field: 'workload_status', align: 'center', sortable: true },
+  { name: 'tasks', label: 'Tasks', field: 'task_count', align: 'center', sortable: true },
+  { name: 'projects', label: 'Projects', field: 'project_count', align: 'center' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' }
 ];
 
@@ -152,90 +161,28 @@ const columns = computed(() => {
   return baseColumns;
 });
 
-const resources = ref([
-  {
-    id: 1,
-    avatar: 'https://cdn.quasar.dev/img/avatar2.jpg',
-    name: 'Sarah Johnson',
-    title: 'Senior Developer',
-    role: 'Frontend Developer',
-    workloadValue: 124.5,
-    utilization: 96,
-    status: 'Overloaded',
-    tasks: 5,
-    projects: [{letter: 'E', color: 'blue'}, {letter: 'M', color: 'red'}, {letter: 'I', color: 'green'}]
-  },
-  {
-    id: 2,
-    avatar: 'https://cdn.quasar.dev/img/avatar3.jpg',
-    name: 'Michael Chen',
-    title: 'Full Stack Developer',
-    role: 'Full Stack Developer',
-    workloadValue: 120.5,
-    utilization: 93,
-    status: 'Overloaded',
-    tasks: 5,
-    projects: [{letter: 'E', color: 'blue'}, {letter: 'M', color: 'red'}, {letter: 'I', color: 'green'}]
-  },
-  {
-    id: 3,
-    avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
-    name: 'Emily Davis',
-    title: 'UI/UX Designer',
-    role: 'Designer',
-    workloadValue: 90,
-    utilization: 69,
-    status: 'Available',
-    tasks: 3,
-    projects: [{letter: 'E', color: 'blue'}, {letter: 'I', color: 'green'}]
-  },
-  {
-    id: 4,
-    avatar: 'https://cdn.quasar.dev/img/avatar5.jpg',
-    name: 'James Wilson',
-    title: 'Backend Developer',
-    role: 'Backend Developer',
-    workloadValue: 135,
-    utilization: 104,
-    status: 'Overloaded',
-    tasks: 6,
-    projects: [{letter: 'E', color: 'blue'}, {letter: 'M', color: 'red'}, {letter: 'I', color: 'green'}]
-  },
-  {
-    id: 5,
-    avatar: 'https://cdn.quasar.dev/img/avatar6.jpg',
-    name: 'Lisa Anderson',
-    title: 'DevOps Engineer',
-    role: 'DevOps Engineer',
-    workloadValue: 115,
-    utilization: 88,
-    status: 'Overloaded',
-    tasks: 4,
-    projects: [{letter: 'I', color: 'green'}, {letter: 'M', color: 'red'}]
-  },
-  {
-    id: 6,
-    avatar: 'https://cdn.quasar.dev/img/avatar1.jpg',
-    name: 'David Brown',
-    title: 'QA Engineer',
-    role: 'QA Engineer',
-    workloadValue: 60,
-    utilization: 46,
-    status: 'Available',
-    tasks: 2,
-    projects: [{letter: 'M', color: 'red'}]
-  }
-]);
+const formatRole = (role: string) => {
+  if (!role) return 'Employee';
+  return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+};
+
+const formatName = (val: string) => {
+  if (!val) return 'Optimal';
+  return val.charAt(0).toUpperCase() + val.slice(1);
+};
 
 const getUtilizationColor = (utilization: number) => {
-  if (utilization >= 100) return 'red';
-  if (utilization >= 85) return 'orange';
+  const u = utilization || 0;
+  if (u >= 100) return 'red';
+  if (u >= 85) return 'orange';
+  if (u < 50) return 'blue';
   return 'green';
 };
 
 const getStatusColor = (status: string) => {
-  if (status === 'Overloaded') return 'red';
-  if (status === 'Available') return 'green';
+  if (status === 'overloaded') return 'red';
+  if (status === 'optimal') return 'green';
+  if (status === 'underutilized') return 'blue';
   return 'grey';
 };
 
@@ -244,9 +191,9 @@ const pagination = ref({
   rowsPerPage: 10
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(resources.value.length / pagination.value.rowsPerPage)));
-const showingStart = computed(() => resources.value.length === 0 ? 0 : (pagination.value.page - 1) * pagination.value.rowsPerPage + 1);
-const showingEnd = computed(() => Math.min(pagination.value.page * pagination.value.rowsPerPage, resources.value.length));
+const totalPages = computed(() => Math.max(1, Math.ceil(resourceStore.resources.length / pagination.value.rowsPerPage)));
+const showingStart = computed(() => resourceStore.resources.length === 0 ? 0 : (pagination.value.page - 1) * pagination.value.rowsPerPage + 1);
+const showingEnd = computed(() => Math.min(pagination.value.page * pagination.value.rowsPerPage, resourceStore.resources.length));
 </script>
 
 <style scoped>

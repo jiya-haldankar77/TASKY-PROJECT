@@ -5,26 +5,32 @@
       <div class="text-indigo text-caption cursor-pointer text-weight-medium">View All</div>
     </div>
     
-    <div class="column q-gutter-y-md">
-      <div v-for="(conflict, index) in conflicts" :key="index" class="row items-start no-wrap justify-between">
+    <div v-if="resourceStore.loading" class="flex flex-center q-pa-md">
+      <q-spinner-dots size="24px" color="primary" />
+    </div>
+
+    <div v-else-if="resourceStore.overloadedResources.length > 0" class="column q-gutter-y-md">
+      <div v-for="conflict in resourceStore.overloadedResources" :key="conflict.id" class="row items-start no-wrap justify-between">
         <div class="row no-wrap">
           <q-icon name="warning" color="red" size="16px" class="q-mr-sm q-mt-xs" />
           <div class="column">
-            <div class="text-weight-bold" style="font-size: 13px; color: #333; line-height: 1.2;">{{ conflict.name }}</div>
-            <div class="text-caption text-grey-7" style="font-size: 11px; margin-top: 2px;">{{ conflict.allocated }} allocated • {{ conflict.overCapacity }} over capacity</div>
+            <div class="text-weight-bold" style="font-size: 13px; color: #333; line-height: 1.2;">{{ conflict.first_name }} {{ conflict.last_name }}</div>
+            <div class="text-caption text-grey-7" style="font-size: 11px; margin-top: 2px;">{{ conflict.estimated_hours || 0 }}h allocated • {{ conflict.utilization || 0 }}% utilization</div>
           </div>
         </div>
         <q-badge color="red-1" text-color="red" label="Overloaded" class="text-weight-bold q-ml-sm q-py-xs rounded-borders" style="font-size: 10px; height: fit-content;" />
       </div>
     </div>
+    
+    <div v-else class="text-center text-grey-6 q-pa-md">
+      <q-icon name="check_circle" color="green" size="24px" class="q-mb-sm" />
+      <div class="text-caption">No resource conflicts detected!</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const conflicts = [
-  { name: 'Sarah Johnson', allocated: '124.5h', overCapacity: '96%' },
-  { name: 'Michael Chen', allocated: '120.5h', overCapacity: '93%' },
-  { name: 'James Wilson', allocated: '135h', overCapacity: '104%' },
-  { name: 'Lisa Anderson', allocated: '115h', overCapacity: '88%' }
-];
+import { useResourceStore } from '../stores/resourceStore';
+
+const resourceStore = useResourceStore();
 </script>

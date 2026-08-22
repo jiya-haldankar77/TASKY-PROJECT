@@ -12,13 +12,26 @@
       </div>
       <div class="column items-end">
         <div class="row items-center q-gutter-md q-mb-md">
-          <q-input v-model="searchQuery" outlined dense rounded bg-color="white" placeholder="Search projects, tasks, resources..." style="width: 320px;">
+          <q-input v-model="searchQuery" outlined dense rounded bg-color="white" placeholder="Search reports..." style="width: 320px;">
             <template v-slot:prepend>
               <q-icon name="search" />
             </template>
           </q-input>
-          <q-avatar size="36px">
-            <img src="https://cdn.quasar.dev/img/avatar.png" />
+          <q-avatar size="36px" class="cursor-pointer">
+            <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
+            <q-menu anchor="bottom right" self="top right">
+              <q-list style="min-width: 150px">
+                <q-item clickable v-close-popup to="/dashboard/profile">
+                  <q-item-section avatar><q-icon name="person" /></q-item-section>
+                  <q-item-section>Profile</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="logout">
+                  <q-item-section avatar><q-icon name="logout" color="red" /></q-item-section>
+                  <q-item-section class="text-red">Logout</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
           </q-avatar>
         </div>
         <div class="row q-gutter-sm">
@@ -33,33 +46,33 @@
     <!-- Summary Cards -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col">
-        <StatCard title="Total Projects" value="3" color="indigo" icon="o_folder" caption="3 active" />
+        <StatCard title="Total Projects" :value="(analyticsStore.overview?.totalProjects || 0).toString()" color="indigo" icon="o_folder" caption="active" />
       </div>
       <div class="col">
-        <StatCard title="Completion Rate" value="27%" color="green" icon="o_verified_user" caption="4 / 15 tasks completed">
+        <StatCard title="Completion Rate" :value="`${analyticsStore.overview?.taskCompletionRate || 0}%`" color="green" icon="o_verified_user" :caption="`${analyticsStore.overview?.completedTasks || 0} tasks completed`">
           <template v-slot:caption>
             <span class="text-green"><q-icon name="arrow_upward" size="10px" /> 8%</span> from last month
           </template>
         </StatCard>
       </div>
       <div class="col">
-        <StatCard title="At Risk Tasks" value="22" color="orange" icon="o_warning_amber" caption="11 delayed">
+        <StatCard title="At Risk Tasks" :value="(analyticsStore.overview?.overdueTasks || 0).toString()" color="orange" icon="o_warning_amber" caption="delayed">
           <template v-slot:caption>
-            <span class="text-orange"><q-icon name="arrow_upward" size="10px" /> 5%</span> from last month
+            <span class="text-orange"><q-icon name="arrow_downward" size="10px" /> 2%</span> from last month
           </template>
         </StatCard>
       </div>
       <div class="col">
-        <StatCard title="Avg. Progress" value="63%" color="indigo" icon="o_pie_chart" caption="Across all projects">
+        <StatCard title="Avg. Progress" :value="`${analyticsStore.overview?.avgProjectProgress || 0}%`" color="indigo" icon="o_pie_chart" caption="Across all projects">
           <template v-slot:caption>
-            <span class="text-indigo"><q-icon name="arrow_upward" size="10px" /> 7%</span> from last month
+            <span class="text-indigo"><q-icon name="arrow_upward" size="10px" /> 5%</span> from last month
           </template>
         </StatCard>
       </div>
       <div class="col">
-        <StatCard title="Team Utilization" value="87%" color="blue" icon="o_groups" caption="720h / 825h capacity">
+        <StatCard title="Team Utilization" :value="`${analyticsStore.overview?.avgUtilization || 0}%`" color="blue" icon="o_groups" caption="average capacity">
           <template v-slot:caption>
-            <span class="text-blue"><q-icon name="arrow_upward" size="10px" /> 5%</span> from last month
+            <span class="text-blue"><q-icon name="arrow_upward" size="10px" /> 1%</span> from last month
           </template>
         </StatCard>
       </div>
@@ -86,7 +99,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/authStore';
+import { useAnalyticsStore } from '../stores/analyticsStore';
 import StatCard from '../components/StatCard.vue';
 import ProjectProgressWidget from '../components/ProjectProgressWidget.vue';
 import ResourceWorkloadTable from '../components/ResourceWorkloadTable.vue';
@@ -95,8 +111,21 @@ import TaskStatusDistribution from '../components/TaskStatusDistribution.vue';
 import TaskPriorityDistribution from '../components/TaskPriorityDistribution.vue';
 import UpcomingDeadlineRisks from '../components/UpcomingDeadlineRisks.vue';
 
+const router = useRouter();
+const authStore = useAuthStore();
+const analyticsStore = useAnalyticsStore();
+
 const searchQuery = ref('');
 const filterMonth = ref('This Month');
+
+onMounted(() => {
+  analyticsStore.loadAll();
+});
+
+const logout = () => {
+  authStore.logout();
+  router.push('/auth/login');
+};
 </script>
 
 <style scoped>

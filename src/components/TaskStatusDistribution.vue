@@ -2,12 +2,16 @@
   <div class="bg-white q-pa-md shadow-1 q-mb-md" style="border-radius: 12px;">
     <div class="text-subtitle1 text-weight-bold q-mb-lg">Task Status Distribution</div>
     
-    <div class="row items-center no-wrap">
+    <div v-if="analyticsStore.loading" class="flex flex-center q-pa-md">
+      <q-spinner-dots size="24px" color="primary" />
+    </div>
+
+    <div v-else-if="analyticsStore.taskDistribution && legendItems.length > 0" class="row items-center no-wrap">
       <!-- Donut Chart -->
-      <div class="donut-chart q-mr-lg">
+      <div class="donut-chart q-mr-lg" :style="donutGradient">
         <div class="donut-hole">
           <div class="text-caption text-grey-6" style="font-size: 11px; line-height: 1.2;">Total</div>
-          <div class="text-weight-bold" style="font-size: 16px; color: #333; line-height: 1.2;">15</div>
+          <div class="text-weight-bold" style="font-size: 16px; color: #333; line-height: 1.2;">{{ analyticsStore.taskDistribution.total || 0 }}</div>
         </div>
       </div>
       
@@ -24,16 +28,62 @@
         </div>
       </div>
     </div>
+
+    <div v-else class="text-center text-grey-6 q-pa-md text-caption">
+      No task distribution data available.
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const legendItems = [
-  { label: 'Not Started', value: 5, percent: 33, color: '#9e9e9e' },
-  { label: 'In Progress', value: 6, percent: 40, color: '#2196f3' },
-  { label: 'Completed', value: 4, percent: 27, color: '#4caf50' },
-  { label: 'Blocked', value: 0, percent: 0, color: '#f44336' }
-];
+import { computed } from 'vue';
+import { useAnalyticsStore } from '../stores/analyticsStore';
+
+const analyticsStore = useAnalyticsStore();
+
+const statusColors: Record<string, string> = {
+  'not-started': '#9e9e9e',
+  'in-progress': '#2196f3',
+  'completed': '#4caf50',
+  'blocked': '#f44336'
+};
+
+const legendItems = computed(() => {
+  if (!analyticsStore.taskDistribution || !analyticsStore.taskDistribution.status) return [];
+  const statusData = analyticsStore.taskDistribution.status;
+  const total = analyticsStore.taskDistribution.total || 0;
+  
+  if (total === 0) return [];
+
+  const items = [];
+  for (const [status, count] of Object.entries(statusData)) {
+    const c = count as number;
+    if (c > 0) {
+      items.push({
+        label: status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        value: c,
+        percent: Math.round((c / total) * 100),
+        color: statusColors[status] || '#757575'
+      });
+    }
+  }
+  return items.sort((a, b) => b.value - a.value);
+});
+
+const donutGradient = computed(() => {
+  if (legendItems.value.length === 0) return { background: 'transparent' };
+  
+  let gradient = 'conic-gradient(';
+  let currentPercent = 0;
+  
+  legendItems.value.forEach((item, index) => {
+    const start = currentPercent;
+    currentPercent += item.percent;
+    gradient += `${item.color} ${start}% ${currentPercent}%${index < legendItems.value.length - 1 ? ',' : ')'}`;
+  });
+  
+  return { background: gradient };
+});
 </script>
 
 <style scoped>
@@ -41,11 +91,6 @@ const legendItems = [
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: conic-gradient(
-    #9e9e9e 0% 33%,
-    #2196f3 33% 73%,
-    #4caf50 73% 100%
-  );
   position: relative;
   display: flex;
   align-items: center;
