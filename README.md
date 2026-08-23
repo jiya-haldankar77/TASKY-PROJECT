@@ -1,38 +1,59 @@
-# Quasar App (tasky)
+# Tasky Project Manager App
 
-## Install the dependencies
+## Full Setup Instructions
 
-```bash
-pnpm install
-# or: yarn/npm/bun install
-```
+To run this code, set up the database, and test the platform, please follow these steps:
 
-### Start the app in development mode (HMR, error reporting, etc.)
+### 1. Database Setup
+You will need to have **MySQL** installed and running locally. The default connection expects the user `root` and password `root`.
 
-```bash
-quasar dev
-```
-
-### Format & Lint the files
+Open your terminal and run the following commands from the root of this project to create the database, build the schema, and insert the test data:
 
 ```bash
-pnpm run lint
-# or: yarn/npm/bun run lint
+# 1. Create the database
+mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS tasky;"
+
+# 2. Import the database schema (tables, views, procedures)
+mysql -u root -proot tasky < tasky_schema.sql
+
+# 3. Import the seed data (test users, projects, tasks)
+mysql -u root -proot tasky < server/seed_data.sql
 ```
 
-...or just check formatting & linting:
+### 2. Start the Backend Server
+The backend is a Node.js Express server located in the `server` folder.
 
 ```bash
-pnpm run lint:check
-# or: yarn/npm/bun run lint:check
+cd server
+npm install
+npm run dev
 ```
+*The server will start running on http://localhost:3001*
 
-### Build the app for production
+### 3. Start the Frontend Application
+The frontend is a Quasar Vue.js application. Open a **new terminal tab** in the root project folder:
 
 ```bash
-quasar build
+npm install
+npm run dev
 ```
+*The application will start running on http://localhost:9000*
 
-### Customize the configuration
+### 4. Test Accounts
+Once the app is running, you can log in using the seed data credentials:
 
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-file).
+**Project Manager Account:**
+- **Email:** `pm@tasky.com` (or ID: `PM-001`)
+- **Password:** `password123`
+
+**Employee Accounts:**
+- **Email:** `sarah.j@tasky.com` (or ID: `EMP-001`)
+- **Password:** `password123`
+*(All seeded employees use `password123`)*
+
+---
+
+### Additional Quasar Commands
+
+- **Format & Lint:** `npm run lint`
+- **Build for Production:** `quasar build`
