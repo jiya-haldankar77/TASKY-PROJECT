@@ -198,6 +198,8 @@ const router = useRouter();
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
 
+type Health = 'On Track' | 'Slightly Delayed' | 'At Risk' | 'Severely Delayed' | 'Completed';
+const $q = useQuasar();
 const searchQuery = ref('');
 
 onMounted(() => {
