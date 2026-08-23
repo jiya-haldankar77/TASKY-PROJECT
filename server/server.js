@@ -11,7 +11,6 @@ import resourceRoutes from './routes/resources.js';
 import analyticsRoutes from './routes/analytics.js';
 import organisationRoutes from './routes/organisation.js';
 import notificationRoutes from './routes/notifications.js';
-import settingsRoutes from './routes/settings.js';
 import calendarRoutes from './routes/calendar.js';
 import schedulingRoutes from './routes/scheduling.js';
 const app = express();
@@ -31,6 +30,13 @@ pool.getConnection()
     try {
       await connection.query('ALTER TABLE user ADD COLUMN avatar VARCHAR(512) NULL;');
       console.log('Added avatar column to user table');
+    } catch (e) {
+      // Ignore error if column already exists
+    }
+    
+    try {
+      await connection.query('ALTER TABLE task ADD COLUMN resources_needed INT NOT NULL DEFAULT 1;');
+      console.log('Added resources_needed column to task table');
     } catch (e) {
       // Ignore error if column already exists
     }
@@ -222,14 +228,31 @@ app.post('/api/auth/register/employee', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Please specify your professional role' });
     }
 
-    // Validate invite code (in production, check against database)
-    const validInviteCodes = ['TASKY2024', 'WELCOME2024', 'TEAM2024', 'JOIN2024'];
-    if (!validInviteCodes.includes(inviteCode)) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired invite code' });
-    }
-
     const connection = await pool.getConnection();
     try {
+      // Validate invite code against database
+      const [codeRows] = await connection.execute(
+        'SELECT id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
+        [inviteCode]
+      );
+
+      if (codeRows.length === 0) {
+        connection.release();
+        return res.status(400).json({ success: false, error: 'Invalid or expired invite code' });
+      }
+      
+      const inviteData = codeRows[0];
+      if (inviteData.max_uses > 0 && inviteData.current_uses >= inviteData.max_uses) {
+        connection.release();
+        return res.status(400).json({ success: false, error: 'Invite code usage limit reached' });
+      }
+
+      // Increment invite code usage
+      await connection.execute(
+        'UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ?',
+        [inviteData.id]
+      );
+
       // Check if email already exists
       const [existingEmail] = await connection.execute(
         'SELECT id FROM user WHERE email = ?',
@@ -412,7 +435,6 @@ app.use('/api/pm/resources', resourceRoutes(pool));
 app.use('/api/pm/analytics', analyticsRoutes(pool));
 app.use('/api/pm/org', organisationRoutes(pool));
 app.use('/api/pm/notifications', notificationRoutes(pool));
-app.use('/api/pm/settings', settingsRoutes(pool));
 app.use('/api/pm/calendar', calendarRoutes(pool));
 app.use('/api/pm/schedule', schedulingRoutes(pool));
 

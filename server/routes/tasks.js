@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { recommendResources, analyzeImpact } from '../services/schedulingEngine.js';
+import { recommendResources, analyzeImpact, runGlobalAutoScheduler } from '../services/schedulingEngine.js';
 const router = Router();
 
 export default function taskRoutes(pool) {
@@ -183,7 +183,7 @@ export default function taskRoutes(pool) {
       const pmId = req.user.id;
       const orgId = req.user.org_id;
       const { project_id, phase_id, title, description, priority, deadline, start_date,
-              expected_effort, assignee_ids, auto_assign } = req.body;
+              expected_effort, assignee_ids, auto_assign, resources_needed } = req.body;
 
       if (!project_id || !title || !deadline) {
         return res.status(400).json({ success: false, error: 'Project, title, and deadline are required' });
@@ -193,10 +193,10 @@ export default function taskRoutes(pool) {
       const assigneeCount = assignee_ids ? assignee_ids.length : 0;
 
       const [result] = await pool.execute(
-        `INSERT INTO task (project_id, phase_id, created_by, title, description, priority, deadline, start_date, expected_effort)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO task (project_id, phase_id, created_by, title, description, priority, deadline, start_date, expected_effort, resources_needed)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [project_id, phase_id || null, pmId, title, description || null,
-         priority || 'medium', deadline, start_date || null, expected_effort || 0]
+         priority || 'medium', deadline, start_date || null, expected_effort || 0, resources_needed || 1]
       );
 
       const taskId = result.insertId;
@@ -237,7 +237,7 @@ export default function taskRoutes(pool) {
   router.put('/:id', async (req, res) => {
     try {
       const taskId = req.params.id;
-      const { title, description, priority, deadline, start_date, expected_effort, status, phase_id } = req.body;
+      const { title, description, priority, deadline, start_date, expected_effort, status, phase_id, assignee_ids, resources_needed } = req.body;
 
       // Get current task for project_id
       const [current] = await pool.execute('SELECT * FROM task WHERE id = ?', [taskId]);
@@ -257,17 +257,53 @@ export default function taskRoutes(pool) {
         if (status === 'completed') updates.completed_at = new Date();
       }
       if (phase_id !== undefined) updates.phase_id = phase_id;
+      if (resources_needed !== undefined) updates.resources_needed = resources_needed;
 
       const setClauses = Object.keys(updates).map(k => `\`${k}\` = ?`).join(', ');
       const values = Object.values(updates);
-      values.push(taskId);
+      
+      if (setClauses.length > 0) {
+        values.push(taskId);
+        await pool.execute(`UPDATE task SET ${setClauses} WHERE id = ?`, values);
+      }
 
-      await pool.execute(`UPDATE task SET ${setClauses} WHERE id = ?`, values);
+      if (assignee_ids !== undefined) {
+        // Deactivate current assignments
+        await pool.execute(
+          'UPDATE task_assignment SET is_active = 0, unassigned_at = NOW() WHERE task_id = ? AND is_active = 1',
+          [taskId]
+        );
+        // Insert new ones
+        for (const userId of assignee_ids) {
+          await pool.execute(
+            'INSERT INTO task_assignment (task_id, user_id, assigned_by) VALUES (?, ?, ?)',
+            [taskId, userId, req.user.id]
+          );
+        }
+      }
 
+      // Update project progress
       // Update project progress
       await pool.execute('CALL sp_update_project_progress(?)', [current[0].project_id]);
 
       const [updated] = await pool.execute('SELECT * FROM task WHERE id = ?', [taskId]);
+
+      // If status changed to completed or priority changed, trigger global auto-scheduler to reallocate freed capacity
+      if ((status === 'completed' && current[0].status !== 'completed') || 
+          (priority !== undefined && priority !== current[0].priority)) {
+        await runGlobalAutoScheduler(pool, current[0].org_id || req.user.org_id);
+      }
+
+      // Fetch fresh assignees to return to frontend
+      const [assignees] = await pool.execute(`
+        SELECT u.id, u.first_name, u.last_name, u.avatar, u.employee_code
+        FROM task_assignment ta
+        JOIN user u ON u.id = ta.user_id
+        WHERE ta.task_id = ? AND ta.is_active = 1
+      `, [taskId]);
+      
+      updated[0].assignees = assignees;
+
       res.json({ success: true, task: updated[0] });
     } catch (error) {
       console.error('Update task error:', error);

@@ -73,6 +73,12 @@
             <q-input outlined v-model="editForm.phone" type="tel" label="Phone Number" />
             <q-input outlined v-model="editForm.avatar" type="url" label="Avatar URL (Direct Link)" />
             
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle2 q-mb-xs text-grey-8">Change Password (Optional)</div>
+            <q-input outlined v-model="editForm.oldPassword" label="Current Password" type="password" />
+            <q-input outlined v-model="editForm.newPassword" label="New Password" type="password" />
+            <q-input outlined v-model="editForm.confirmPassword" label="Confirm New Password" type="password" :rules="[val => !editForm.newPassword || val === editForm.newPassword || 'Passwords must match']" lazy-rules />
+            
             <div class="row justify-end q-mt-lg">
               <q-btn flat label="Cancel" color="grey" v-close-popup />
               <q-btn unelevated label="Save Changes" color="indigo" type="submit" :loading="saving" />
@@ -126,7 +132,10 @@ const editForm = ref({
   surname: '',
   email: '',
   phone: '',
-  avatar: ''
+  avatar: '',
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 });
 
 const openEditDialog = () => {
@@ -136,7 +145,10 @@ const openEditDialog = () => {
       surname: authStore.currentUser.surname,
       email: authStore.currentUser.email,
       phone: authStore.currentUser.phone || '',
-      avatar: authStore.currentUser.avatar && !authStore.currentUser.avatar.includes('pravatar.cc') ? authStore.currentUser.avatar : ''
+      avatar: authStore.currentUser.avatar && !authStore.currentUser.avatar.includes('pravatar.cc') ? authStore.currentUser.avatar : '',
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: ''
     };
     editDialogVisible.value = true;
   }
@@ -147,7 +159,16 @@ const saveProfile = async () => {
   
   saving.value = true;
   
-  const result = await authStore.updateProfile(authStore.currentUser.id, editForm.value);
+  if (editForm.value.newPassword && editForm.value.newPassword !== editForm.value.confirmPassword) {
+    saving.value = false;
+    $q.notify({ type: 'warning', message: 'New passwords do not match' });
+    return;
+  }
+  
+  const payload: any = { ...editForm.value };
+  delete payload.confirmPassword;
+  
+  const result = await authStore.updateProfile(authStore.currentUser.id, payload);
   saving.value = false;
   
   if (result.success) {

@@ -31,7 +31,6 @@ const routes: RouteRecordRaw[] = [
       { path: 'organisation', component: () => import('@/pages/OrganisationPage.vue'), meta: { requiresRole: 'pm' } },
       { path: 'profile', component: () => import('@/pages/ProfilePage.vue'), meta: { requiresRole: 'pm' } },
       { path: 'notifications', component: () => import('@/pages/NotificationsPage.vue'), meta: { requiresRole: 'pm' } },
-      { path: 'settings', component: () => import('@/pages/SettingsPage.vue'), meta: { requiresRole: 'pm' } },
     ],
   },
   {

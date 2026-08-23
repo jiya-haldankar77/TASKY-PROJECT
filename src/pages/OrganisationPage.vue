@@ -57,7 +57,7 @@
                     <q-item-label caption class="text-grey-6">{{ member.email }}</q-item-label>
                   </q-item-section>
                   <q-item-section side>
-                    <q-badge :color="member.role_name === 'pm' ? 'orange-1' : 'grey-2'" :text-color="member.role_name === 'pm' ? 'orange' : 'grey-7'" :label="member.role_name === 'pm' ? 'Manager' : 'Employee'" class="q-px-sm" />
+                    <q-badge :color="member.role_name === 'Project Manager' ? 'orange-1' : 'grey-2'" :text-color="member.role_name === 'Project Manager' ? 'orange' : 'grey-7'" :label="member.role_name === 'Project Manager' ? 'Manager' : 'Employee'" class="q-px-sm" />
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -89,11 +89,17 @@ onMounted(async () => {
 const groupedMembers = computed(() => {
   const groups: Record<string, any[]> = {};
   orgStore.members.forEach((member: any) => {
-    const role = member.professional_role || 'Unassigned';
+    let role = member.professional_role || 'Unassigned';
+    
+    // Explicitly separate Project Managers from other roles
+    if (member.role_name === 'Project Manager') {
+      role = 'Project Manager';
+    }
+
     if (!groups[role]) {
       groups[role] = [];
     }
-    groups[role].push(member);
+    groups[role]!.push(member);
   });
   return groups;
 });

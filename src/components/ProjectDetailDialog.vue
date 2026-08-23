@@ -168,8 +168,8 @@
       <q-spinner-dots size="40px" color="primary" />
     </q-card>
     
-    <!-- Create Task Dialog (Placeholder for now) -->
-    <!-- Will be implemented in Tasks phase -->
+    <!-- Create Task Dialog -->
+    <CreateTaskDialog v-model="showCreateTaskDialog" :initial-project-id="projectStore.currentProject?.id" @saved="projectStore.fetchProjectById(projectStore.currentProject.id)" />
   </q-dialog>
 </template>
 
@@ -178,6 +178,7 @@ import { ref, computed, watch } from 'vue';
 import { useProjectStore } from '../stores/projectStore';
 import { date } from 'quasar';
 import { useRouter } from 'vue-router';
+import CreateTaskDialog from './CreateTaskDialog.vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -235,24 +236,36 @@ const formattedPriority = computed(() => {
 });
 
 const statusColor = computed(() => {
-  const s = projectStore.currentProject?.status;
-  if (s === 'active') return 'green-1';
-  if (s === 'planning') return 'blue-1';
-  if (s === 'completed') return 'grey-3';
+  const s = projectStore.currentProject?.computed_status || projectStore.currentProject?.status;
+  if (s === 'on-going') return 'blue-1';
+  if (s === 'not-started') return 'grey-2';
+  if (s === 'completed') return 'green-1';
+  if (s === 'delayed') return 'red-1';
+  if (s === 'pending-completion') return 'orange-1';
+
+  if (projectStore.currentProject?.status === 'active') return 'green-1';
+  if (projectStore.currentProject?.status === 'planning') return 'blue-1';
+  if (projectStore.currentProject?.status === 'completed') return 'grey-3';
   return 'orange-1';
 });
 
 const statusTextColor = computed(() => {
-  const s = projectStore.currentProject?.status;
-  if (s === 'active') return 'green';
-  if (s === 'planning') return 'blue';
-  if (s === 'completed') return 'grey-8';
+  const s = projectStore.currentProject?.computed_status || projectStore.currentProject?.status;
+  if (s === 'on-going') return 'blue';
+  if (s === 'not-started') return 'grey-8';
+  if (s === 'completed') return 'green';
+  if (s === 'delayed') return 'red';
+  if (s === 'pending-completion') return 'orange';
+
+  if (projectStore.currentProject?.status === 'active') return 'green';
+  if (projectStore.currentProject?.status === 'planning') return 'blue';
+  if (projectStore.currentProject?.status === 'completed') return 'grey-8';
   return 'orange';
 });
 
 const formattedStatus = computed(() => {
-  const s = projectStore.currentProject?.status || 'planning';
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  const status = projectStore.currentProject?.computed_status || projectStore.currentProject?.status || 'planning';
+  return status.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 });
 
 const progressColor = computed(() => {

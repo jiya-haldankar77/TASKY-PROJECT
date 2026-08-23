@@ -131,19 +131,6 @@
           </q-item-section>
           <q-item-section>Notifications</q-item-section>
         </q-item>
-
-        <q-item 
-          clickable 
-          v-ripple 
-          to="/dashboard/settings"
-          active-class="bg-lime-13 text-black"
-          class="nav-item rounded-borders q-mb-md"
-        >
-          <q-item-section avatar>
-            <q-icon name="o_settings" />
-          </q-item-section>
-          <q-item-section>Settings</q-item-section>
-        </q-item>
       </q-list>
 
     </q-drawer>

@@ -18,9 +18,11 @@
       flat
       hide-bottom
       v-model:pagination="pagination"
+      @row-click="(evt, row) => openDialog(row.user_id || row.id)"
       :class="compact ? '' : 'full-height-table'"
-      :style="compact ? '' : 'flex: 1 1 0;'"
+      :style="compact ? '' : 'flex: 1 1 0; min-height: 0;'"
       :loading="resourceStore.loading"
+      class="cursor-pointer"
     >
       <template v-slot:loading>
         <q-inner-loading showing color="primary" />
@@ -52,7 +54,7 @@
       <template v-slot:body-cell-workload="props">
         <q-td :props="props" style="width: 120px;">
           <div class="column">
-            <div class="text-weight-bold text-grey-8 q-mb-xs" style="font-size: 12px;">{{ props.row.estimated_hours }}h / 160h</div>
+            <div class="text-weight-bold text-grey-8 q-mb-xs" style="font-size: 12px;">{{ Math.round(props.row.weekly_required_hours || 0) }}h / {{ props.row.max_hours_per_week || 40 }}h (per week)</div>
             <q-linear-progress :value="(props.row.utilization || 0) / 100" :color="getUtilizationColor(props.row.utilization)" size="3px" class="rounded-borders" />
           </div>
         </q-td>
@@ -78,7 +80,7 @@
       <template v-slot:body-cell-tasks="props">
         <q-td :props="props">
           <div class="column items-center">
-            <div class="text-weight-bold text-grey-8" style="font-size: 13px;">{{ props.row.task_count || 0 }}</div>
+            <div class="text-weight-bold text-grey-8" style="font-size: 13px;">{{ props.row.active_task_count || 0 }}</div>
             <div class="text-caption text-grey-6" style="font-size: 10px;">active</div>
           </div>
         </q-td>
@@ -94,14 +96,7 @@
         </q-td>
       </template>
 
-      <!-- Actions Column -->
-      <template v-slot:body-cell-actions="props">
-        <q-td :props="props">
-          <div class="row items-center justify-center q-gutter-x-xs no-wrap">
-            <q-btn flat round dense icon="visibility" color="indigo" size="10px" class="bg-indigo-1" />
-          </div>
-        </q-td>
-      </template>
+
 
       <!-- Empty state -->
       <template v-slot:no-data>
@@ -125,6 +120,9 @@
         </div>
       </template>
     </q-table>
+
+    <!-- Resource Detail Dialog -->
+    <ResourceDetailDialog v-model="dialogOpen" :resource-id="selectedResourceId" />
   </div>
 </template>
 
@@ -132,6 +130,7 @@
 import { ref, computed } from 'vue';
 import type { QTableProps } from 'quasar';
 import { useResourceStore } from '../stores/resourceStore';
+import ResourceDetailDialog from './ResourceDetailDialog.vue';
 
 const props = defineProps({
   compact: {
@@ -142,16 +141,22 @@ const props = defineProps({
 
 const resourceStore = useResourceStore();
 const filterMonth = ref('This Month');
+const dialogOpen = ref(false);
+const selectedResourceId = ref(0);
+
+const openDialog = (id: number) => {
+  selectedResourceId.value = id;
+  dialogOpen.value = true;
+};
 
 const baseColumns: QTableProps['columns'] = [
   { name: 'resource', label: 'Resource', field: 'first_name', align: 'left', sortable: true },
   { name: 'role', label: 'Role', field: 'role_name', align: 'left', sortable: true },
-  { name: 'workload', label: 'Workload', field: 'estimated_hours', align: 'left', sortable: true },
+  { name: 'workload', label: 'Workload', field: 'weekly_required_hours', align: 'left', sortable: true },
   { name: 'utilization', label: 'Utilization', field: 'utilization', align: 'center', sortable: true },
   { name: 'status', label: 'Status', field: 'workload_status', align: 'center', sortable: true },
-  { name: 'tasks', label: 'Tasks', field: 'task_count', align: 'center', sortable: true },
-  { name: 'projects', label: 'Projects', field: 'project_count', align: 'center' },
-  { name: 'actions', label: 'Actions', field: 'id', align: 'center' }
+  { name: 'tasks', label: 'Tasks', field: 'active_task_count', align: 'center', sortable: true },
+  { name: 'projects', label: 'Projects', field: 'project_count', align: 'center' }
 ];
 
 const columns = computed(() => {
@@ -181,6 +186,8 @@ const getUtilizationColor = (utilization: number) => {
 
 const getStatusColor = (status: string) => {
   if (status === 'overloaded') return 'red';
+  if (status === 'near-capacity') return 'orange';
+  if (status === 'available') return 'green';
   if (status === 'optimal') return 'green';
   if (status === 'underutilized') return 'blue';
   return 'grey';
@@ -207,9 +214,13 @@ const showingEnd = computed(() => Math.min(pagination.value.page * pagination.va
 /* Sticky Header Table styling */
 .full-height-table {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 :deep(.full-height-table .q-table__middle) {
-  max-height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 :deep(.full-height-table thead tr th) {
   position: sticky;

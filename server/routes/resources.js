@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getOrgResourceWorkloads, detectOverloadedResources } from '../services/schedulingEngine.js';
+import { getOrgResourceWorkloads, detectOverloadedResources, rebalanceWorkloads } from '../services/schedulingEngine.js';
 const router = Router();
 
 export default function resourceRoutes(pool) {
@@ -190,6 +190,18 @@ export default function resourceRoutes(pool) {
     } catch (error) {
       console.error('Get availability error:', error);
       res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // POST /api/pm/resources/rebalance
+  router.post('/rebalance', async (req, res) => {
+    try {
+      const orgId = req.user.org_id;
+      const result = await rebalanceWorkloads(pool, orgId);
+      res.json(result);
+    } catch (error) {
+      console.error('Rebalance error:', error);
+      res.status(500).json({ success: false, error: 'Server error during rebalance' });
     }
   });
 

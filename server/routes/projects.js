@@ -57,6 +57,21 @@ export default function projectRoutes(pool) {
         proj.team = team;
       }
 
+      // Compute dynamic project status
+      projects.forEach(proj => {
+        if (proj.status === 'completed') {
+          proj.computed_status = 'completed';
+        } else if (proj.total_tasks > 0 && proj.completed_tasks === proj.total_tasks) {
+          proj.computed_status = 'pending-completion';
+        } else if (proj.overdue_task_count > 0) {
+          proj.computed_status = 'delayed';
+        } else if (proj.total_tasks === 0 || proj.progress == 0) {
+          proj.computed_status = 'not-started';
+        } else {
+          proj.computed_status = 'on-going';
+        }
+      });
+
       res.json({ success: true, projects });
     } catch (error) {
       console.error('Get projects error:', error);
@@ -128,6 +143,19 @@ export default function projectRoutes(pool) {
         JOIN task t2 ON t2.id = td.depends_on_id
         WHERE t1.project_id = ? OR t2.project_id = ?
       `, [projectId, projectId]);
+
+      // Compute dynamic project status
+      if (project.status === 'completed') {
+        project.computed_status = 'completed';
+      } else if (project.total_tasks > 0 && project.completed_tasks === project.total_tasks) {
+        project.computed_status = 'pending-completion';
+      } else if (tasks.some(t => t.status !== 'completed' && new Date(t.deadline) < new Date())) {
+        project.computed_status = 'delayed';
+      } else if (project.total_tasks === 0 || project.progress == 0) {
+        project.computed_status = 'not-started';
+      } else {
+        project.computed_status = 'on-going';
+      }
 
       res.json({
         success: true,

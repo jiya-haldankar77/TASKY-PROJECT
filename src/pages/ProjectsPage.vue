@@ -166,6 +166,11 @@ const currentPage = ref(1);
 
 onMounted(() => {
   projectStore.fetchProjects(filters.value);
+  
+  if (route.query.open) {
+    selectedProjectId.value = route.query.open as string;
+    showDetailDialog.value = true;
+  }
 });
 
 const applyFilters = () => {

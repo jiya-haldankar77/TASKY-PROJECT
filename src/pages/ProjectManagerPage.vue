@@ -156,14 +156,20 @@
                        {{ log.status === 'blocked' ? 'In Progress (Blocked)' : log.status }}
                      </q-badge>
                    </div>
-                   <div class="text-subtitle2 q-mb-xs">{{ log.task_title }}</div>
-                   <div class="text-caption text-grey-8 bg-grey-2 q-pa-sm rounded-borders" :class="{ 'border-left-orange': log.status === 'blocked' }">
+                   <router-link :to="`/dashboard/tasks?search=${encodeURIComponent(log.task_title)}`" class="text-subtitle2 q-mb-xs text-indigo cursor-pointer text-weight-bold" style="text-decoration: none;">
+                     {{ log.task_title }}
+                     <q-tooltip>View Task Details</q-tooltip>
+                   </router-link>
+                   <div class="text-caption text-grey-8 bg-grey-2 q-pa-sm rounded-borders q-mt-xs" :class="{ 'border-left-orange': log.status === 'blocked' }">
                      "{{ log.work_completed }}"
                      <div v-if="log.remaining_work" class="q-mt-xs text-italic text-grey-6">Remaining: {{ log.remaining_work }}</div>
                      <div v-if="log.comments" class="q-mt-xs text-weight-medium">Note: {{ log.comments }}</div>
                    </div>
                    <div class="row justify-between items-center q-mt-sm">
-                     <div class="text-caption text-grey">{{ log.project_name }}</div>
+                     <router-link :to="`/dashboard/projects?search=${encodeURIComponent(log.project_name)}`" class="text-caption text-indigo cursor-pointer" style="text-decoration: none; font-weight: 500;">
+                       <q-icon name="folder" class="q-mr-xs" size="14px"/>{{ log.project_name }}
+                       <q-tooltip>View Project Details</q-tooltip>
+                     </router-link>
                      <q-btn v-if="log.status === 'blocked'" flat color="primary" label="Acknowledge & Unblock" size="sm" :to="`/dashboard/tasks?search=${encodeURIComponent(log.task_title)}`" />
                    </div>
                  </q-card-section>

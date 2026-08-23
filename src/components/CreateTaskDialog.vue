@@ -35,13 +35,37 @@
           </div>
           
           <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-input v-model="form.estimated_hours" label="Estimated Hours" type="number" outlined dense min="0" />
+            <div class="col-4">
+              <q-input v-model="form.expected_effort" label="Expected Effort (Hours)" type="number" outlined dense min="0" />
             </div>
-            <div class="col-6">
-              <q-input v-model="form.deadline" label="Deadline" type="date" outlined dense stack-label />
+            <div class="col-4">
+              <q-input v-model="form.resources_needed" label="Resources Needed" type="number" outlined dense min="1" :rules="[val => val > 0 || 'Must be > 0']" />
+            </div>
+            <div class="col-4">
+              <q-input v-model="form.deadline" label="Deadline" type="date" outlined dense stack-label :rules="[val => !!val || 'Deadline is required']" />
             </div>
           </div>
+          
+          <q-select 
+            v-if="!form.auto_assign"
+            v-model="form.assignee_ids" 
+            :options="resourceOptions" 
+            label="Assignees" 
+            outlined 
+            dense 
+            multiple 
+            use-chips
+            emit-value
+            map-options
+            hint="Select employees manually"
+          />
+
+          <q-toggle 
+            v-if="!isEdit && form.assignee_ids.length === 0" 
+            v-model="form.auto_assign" 
+            label="Use Smart Auto-Scheduler to assign this task" 
+            color="indigo" 
+          />
           
           <q-slider
             v-if="isEdit"
@@ -69,17 +93,20 @@
 import { ref, watch, computed } from 'vue';
 import { usePmTaskStore } from '../stores/pmTaskStore';
 import { useProjectStore } from '../stores/projectStore';
+import { useOrgStore } from '../stores/orgStore';
 import { useQuasar } from 'quasar';
 
 const props = defineProps<{
   modelValue: boolean;
   taskToEdit?: any;
+  initialProjectId?: number | string;
 }>();
 
 const emit = defineEmits(['update:modelValue', 'saved']);
 const $q = useQuasar();
 const taskStore = usePmTaskStore();
 const projectStore = useProjectStore();
+const orgStore = useOrgStore();
 
 const isOpen = ref(props.modelValue);
 const isEdit = ref(false);
@@ -87,6 +114,10 @@ const loading = ref(false);
 
 const projectOptions = computed(() => {
   return projectStore.projects.map(p => ({ label: p.name, value: p.id }));
+});
+
+const resourceOptions = computed(() => {
+  return orgStore.members.map(m => ({ label: `${m.first_name} ${m.last_name} (${m.role_name})`, value: m.id }));
 });
 
 const statusOptions = [
@@ -110,8 +141,11 @@ const form = ref({
   status: 'not-started',
   priority: 'medium',
   progress: 0,
-  estimated_hours: null as number | null,
-  deadline: ''
+  expected_effort: null as number | null,
+  resources_needed: 1,
+  deadline: '',
+  assignee_ids: [] as number[],
+  auto_assign: true
 });
 
 watch(() => props.modelValue, (val) => {
@@ -119,6 +153,9 @@ watch(() => props.modelValue, (val) => {
   if (val) {
     if (projectStore.projects.length === 0) {
       projectStore.fetchProjects();
+    }
+    if (orgStore.members.length === 0) {
+      orgStore.fetchMembers();
     }
     
     if (props.taskToEdit) {
@@ -130,20 +167,26 @@ watch(() => props.modelValue, (val) => {
         status: props.taskToEdit.status,
         priority: props.taskToEdit.priority,
         progress: props.taskToEdit.progress || 0,
-        estimated_hours: props.taskToEdit.estimated_hours,
-        deadline: props.taskToEdit.deadline ? props.taskToEdit.deadline.split('T')[0] : ''
+        expected_effort: props.taskToEdit.expected_effort,
+        resources_needed: props.taskToEdit.resources_needed || 1,
+        deadline: props.taskToEdit.deadline ? props.taskToEdit.deadline.split('T')[0] : '',
+        assignee_ids: props.taskToEdit.assignees ? props.taskToEdit.assignees.map((a: any) => a.id) : [],
+        auto_assign: false
       };
     } else {
       isEdit.value = false;
       form.value = {
-        project_id: projectOptions.value.length > 0 ? projectOptions.value[0]?.value : null,
+        project_id: props.initialProjectId ? Number(props.initialProjectId) : (projectOptions.value.length > 0 ? projectOptions.value[0]?.value : null),
         title: '',
         description: '',
         status: 'not-started',
         priority: 'medium',
         progress: 0,
-        estimated_hours: null,
-        deadline: ''
+        expected_effort: null,
+        resources_needed: 1,
+        deadline: '',
+        assignee_ids: [],
+        auto_assign: true
       };
     }
   }

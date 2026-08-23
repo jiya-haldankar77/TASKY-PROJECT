@@ -105,5 +105,31 @@ export const useResourceStore = defineStore('resource', {
         this.loading = false;
       }
     },
+
+    async rebalanceWorkloads() {
+      this.loading = true;
+      try {
+        const response = await fetch('http://localhost:3001/api/pm/resources/rebalance', {
+          method: 'POST',
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Re-fetch everything to update UI
+          await this.fetchResources();
+          await this.fetchConflicts();
+          await this.fetchAvailability();
+          return data;
+        } else {
+          this.error = data.error;
+          throw new Error(data.error);
+        }
+      } catch (err: any) {
+        this.error = err.message;
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

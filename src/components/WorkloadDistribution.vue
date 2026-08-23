@@ -50,7 +50,7 @@ const roleColors: Record<string, string> = {
 };
 
 const totalHours = computed(() => {
-  return resourceStore.resources.reduce((sum: number, r: any) => sum + (r.estimated_hours || 0), 0);
+  return resourceStore.resources.reduce((sum: number, r: any) => sum + Math.round(r.weekly_required_hours || 0), 0);
 });
 
 const legendItems = computed(() => {
@@ -59,7 +59,7 @@ const legendItems = computed(() => {
   const roleMap: Record<string, number> = {};
   resourceStore.resources.forEach((r: any) => {
     const role = r.role_name || 'employee';
-    roleMap[role] = (roleMap[role] || 0) + (r.estimated_hours || 0);
+    roleMap[role] = (roleMap[role] || 0) + Math.round(r.weekly_required_hours || 0);
   });
 
   const items = Object.entries(roleMap).map(([role, hours]) => {

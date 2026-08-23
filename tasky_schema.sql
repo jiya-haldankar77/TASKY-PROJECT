@@ -49,6 +49,28 @@ CREATE TABLE IF NOT EXISTS `role` (
 
 
 -- ============================================================
+-- 2b. INVITE CODE
+-- ============================================================
+-- Invite codes for employee registration.
+
+CREATE TABLE IF NOT EXISTS `invite_code` (
+  `id`              INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  `org_id`          INT UNSIGNED     NOT NULL,
+  `code`            VARCHAR(50)      NOT NULL,
+  `created_by`      INT UNSIGNED     NOT NULL,
+  `max_uses`        INT UNSIGNED     NOT NULL DEFAULT 0 COMMENT '0 means unlimited',
+  `current_uses`    INT UNSIGNED     NOT NULL DEFAULT 0,
+  `expires_at`      DATETIME         NOT NULL,
+  `is_active`       TINYINT(1)       NOT NULL DEFAULT 1,
+  `created_at`      DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_invite_code` (`code`),
+  INDEX `idx_invite_org` (`org_id`),
+  CONSTRAINT `fk_invite_org` FOREIGN KEY (`org_id`) REFERENCES `organization` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ============================================================
 -- 3. USER (Employee / Manager)
 -- ============================================================
 -- Discussion note: "Manager | Employee [code]"

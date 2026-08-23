@@ -34,7 +34,10 @@
             </q-menu>
           </q-avatar>
         </div>
-        <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" />
+        <div class="row q-gutter-sm">
+          <q-btn unelevated color="teal-6" icon="autorenew" label="Auto Schedule & Rebalance" no-caps class="rounded-borders" @click="handleRebalance" :loading="rebalancing" />
+          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" />
+        </div>
       </div>
     </div>
     
@@ -59,16 +62,9 @@
 
     <!-- Main Content Split -->
     <div class="row q-col-gutter-md" style="flex: 1 1 0; min-height: 0;">
-      <!-- Left Column: Data Table -->
-      <div class="col-8" style="height: 100%; display: flex; flex-direction: column;">
+      <!-- Main Column: Data Table -->
+      <div class="col-12" style="height: 100%; display: flex; flex-direction: column; min-height: 0;">
         <ResourceWorkloadTable />
-      </div>
-      
-      <!-- Right Column: Sidebar Widgets -->
-      <div class="col-4" style="height: 100%; overflow-y: auto; padding-right: 8px;">
-        <ResourceConflicts />
-        <WorkloadDistribution />
-        <TeamAvailability />
       </div>
     </div>
 
@@ -78,18 +74,36 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useAuthStore } from '../stores/authStore';
 import { useResourceStore } from '../stores/resourceStore';
 import ResourceWorkloadTable from '../components/ResourceWorkloadTable.vue';
-import ResourceConflicts from '../components/ResourceConflicts.vue';
-import WorkloadDistribution from '../components/WorkloadDistribution.vue';
-import TeamAvailability from '../components/TeamAvailability.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const resourceStore = useResourceStore();
+const $q = useQuasar();
 
 const searchQuery = ref('');
+const rebalancing = ref(false);
+
+const handleRebalance = async () => {
+  rebalancing.value = true;
+  try {
+    const res = await resourceStore.rebalanceWorkloads();
+    $q.notify({
+      type: 'positive',
+      message: `Successfully rebalanced workloads. ${res.assignedCount || 0} tasks re-assigned.`
+    });
+  } catch (err: any) {
+    $q.notify({
+      type: 'negative',
+      message: err.message || 'Error rebalancing workloads'
+    });
+  } finally {
+    rebalancing.value = false;
+  }
+};
 
 onMounted(() => {
   resourceStore.fetchResources();

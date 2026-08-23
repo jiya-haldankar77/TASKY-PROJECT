@@ -128,22 +128,36 @@ const formattedPriority = computed(() => {
 });
 
 const statusColor = computed(() => {
-  if (props.project.status === 'active') return 'green-1';
-  if (props.project.status === 'planning') return 'blue-1';
-  if (props.project.status === 'completed') return 'grey-3';
+  const status = props.project.computed_status || props.project.status;
+  if (status === 'on-going') return 'blue-1';
+  if (status === 'not-started') return 'grey-2';
+  if (status === 'completed') return 'green-1';
+  if (status === 'delayed') return 'red-1';
+  if (status === 'pending-completion') return 'orange-1';
+  
+  if (props.project.status === 'active') return 'blue-1';
+  if (props.project.status === 'planning') return 'grey-2';
+  if (props.project.status === 'completed') return 'green-1';
   return 'orange-1';
 });
 
 const statusTextColor = computed(() => {
-  if (props.project.status === 'active') return 'green';
-  if (props.project.status === 'planning') return 'blue';
-  if (props.project.status === 'completed') return 'grey-8';
+  const status = props.project.computed_status || props.project.status;
+  if (status === 'on-going') return 'blue';
+  if (status === 'not-started') return 'grey-8';
+  if (status === 'completed') return 'green';
+  if (status === 'delayed') return 'red';
+  if (status === 'pending-completion') return 'orange';
+
+  if (props.project.status === 'active') return 'blue';
+  if (props.project.status === 'planning') return 'grey-8';
+  if (props.project.status === 'completed') return 'green';
   return 'orange';
 });
 
 const formattedStatus = computed(() => {
-  const s = props.project.status || 'planning';
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  const status = props.project.computed_status || props.project.status || 'planning';
+  return status.split('-').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 });
 
 const progressColor = computed(() => {
