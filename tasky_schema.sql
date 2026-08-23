@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS `workspace_invite` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_invite_code` (`invite_code`),
   INDEX `idx_invite_org` (`org_id`),
-  CONSTRAINT `fk_invite_org` FOREIGN KEY (`org_id`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_workspace_invite_org` FOREIGN KEY (`org_id`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_invite_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_invite_inviter` FOREIGN KEY (`invited_by`) REFERENCES `user` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_invite_accepter` FOREIGN KEY (`accepted_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
