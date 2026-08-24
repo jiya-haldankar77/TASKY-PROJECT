@@ -140,7 +140,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Register Project Manager endpoint
 app.post('/api/auth/register/pm', async (req, res) => {
   try {
-    const { firstName, surname, email, phone, managerId, password } = req.body;
+    const { firstName, surname, email, phone, managerId, password, organisationName, inviteCode } = req.body;
 
     if (!firstName || !surname || !email || !managerId || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
@@ -168,13 +168,92 @@ app.post('/api/auth/register/pm', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Manager ID already exists' });
       }
 
+      let orgId;
+      let roleId;
+
+      if (inviteCode) {
+        // Validate invite code against database
+        const [codeRows] = await connection.execute(
+          'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
+          [inviteCode]
+        );
+
+        if (codeRows.length === 0) {
+          return res.status(400).json({ success: false, error: 'Invalid or expired invite code' });
+        }
+        
+        const inviteData = codeRows[0];
+        if (inviteData.max_uses > 0 && inviteData.current_uses >= inviteData.max_uses) {
+          return res.status(400).json({ success: false, error: 'Invite code usage limit reached' });
+        }
+
+        // Increment invite code usage
+        await connection.execute(
+          'UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ?',
+          [inviteData.id]
+        );
+
+        orgId = inviteData.org_id;
+
+        // Get manager role ID for this org
+        const [roleRows] = await connection.execute(
+          'SELECT id FROM role WHERE org_id = ? AND access_level = ? LIMIT 1',
+          [orgId, 'manager']
+        );
+
+        if (roleRows.length === 0) {
+          return res.status(400).json({ success: false, error: 'Manager role not found for this organization' });
+        }
+        roleId = roleRows[0].id;
+      } else {
+        // Create new organization
+        const orgNameToUse = organisationName && organisationName.trim() ? organisationName.trim() : `${firstName}'s Organization`;
+        
+        let finalOrgName = orgNameToUse;
+        let isUnique = false;
+        let suffix = 0;
+        
+        while (!isUnique) {
+          try {
+            const [orgResult] = await connection.execute(
+              'INSERT INTO organization (name) VALUES (?)',
+              [finalOrgName]
+            );
+            orgId = orgResult.insertId;
+            isUnique = true;
+          } catch (err) {
+            if (err.code === 'ER_DUP_ENTRY') {
+              suffix++;
+              finalOrgName = `${orgNameToUse} ${suffix}`;
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        // Create default roles for the new organization
+        await connection.execute(
+          'INSERT INTO role (org_id, name, description, access_level) VALUES (?, ?, ?, ?)',
+          [orgId, 'Admin', 'System Administrator', 'admin']
+        );
+        const [roleResult] = await connection.execute(
+          'INSERT INTO role (org_id, name, description, access_level) VALUES (?, ?, ?, ?)',
+          [orgId, 'Project Manager', 'Manages projects and resources', 'manager']
+        );
+        roleId = roleResult.insertId;
+        await connection.execute(
+          'INSERT INTO role (org_id, name, description, access_level) VALUES (?, ?, ?, ?)',
+          [orgId, 'Employee', 'Standard employee access', 'employee']
+        );
+      }
+
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Insert new user (assuming role_id 2 is Project Manager based on schema)
+      // Insert new user
       const [result] = await connection.execute(
         'INSERT INTO user (org_id, role_id, employee_code, first_name, last_name, email, phone, password_hash, application_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [1, 2, managerId, firstName, surname, email, phone, hashedPassword, 'project_manager']
+        [orgId, roleId, managerId, firstName, surname, email, phone, hashedPassword, 'project_manager']
       );
 
       const newUser = await getUserById(result.insertId);

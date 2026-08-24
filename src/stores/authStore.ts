@@ -66,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const registerPM = async (userData: Omit<User, 'id'> & { managerId: string, password: string }) => {
+  const registerPM = async (userData: Omit<User, 'id'> & { managerId: string, password: string, organisationName?: string, inviteCode?: string }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register/pm`, {
         method: 'POST',

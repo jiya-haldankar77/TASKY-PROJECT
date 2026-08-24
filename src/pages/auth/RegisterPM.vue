@@ -71,6 +71,36 @@
       </div>
 
       <div class="form-section">
+        <label class="form-label">Organisation Name (if creating a new organisation)</label>
+        <q-input
+          v-model="form.organisationName"
+          outlined
+          dense
+          bg-color="grey-1"
+          placeholder="Enter organisation name"
+        >
+          <template v-slot:prepend>
+            <q-icon name="domain" color="grey-7" />
+          </template>
+        </q-input>
+      </div>
+
+      <div class="form-section">
+        <label class="form-label">Invite Code (Optional - to join existing organisation)</label>
+        <q-input
+          v-model="form.inviteCode"
+          outlined
+          dense
+          bg-color="grey-1"
+          placeholder="Enter invite code"
+        >
+          <template v-slot:prepend>
+            <q-icon name="key" color="grey-7" />
+          </template>
+        </q-input>
+      </div>
+
+      <div class="form-section">
         <label class="form-label">Manager ID</label>
         <q-input
           v-model="form.managerId"
@@ -202,6 +232,8 @@ const form = reactive({
   surname: '',
   email: '',
   phone: '',
+  organisationName: '',
+  inviteCode: '',
   managerId: '',
   password: '',
   confirmPassword: '',
@@ -258,7 +290,9 @@ const handleRegister = async () => {
       phone: form.phone,
       role: 'pm',
       managerId: form.managerId,
-      password: form.password
+      password: form.password,
+      organisationName: form.organisationName,
+      inviteCode: form.inviteCode
     })
     
     if (result.success) {
