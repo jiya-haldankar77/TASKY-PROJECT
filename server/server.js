@@ -311,7 +311,7 @@ app.post('/api/auth/register/employee', async (req, res) => {
     try {
       // Validate invite code against database
       const [codeRows] = await connection.execute(
-        'SELECT id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
+        'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
         [inviteCode]
       );
 
@@ -321,6 +321,8 @@ app.post('/api/auth/register/employee', async (req, res) => {
       }
       
       const inviteData = codeRows[0];
+      const orgId = inviteData.org_id;
+
       if (inviteData.max_uses > 0 && inviteData.current_uses >= inviteData.max_uses) {
         connection.release();
         return res.status(400).json({ success: false, error: 'Invite code usage limit reached' });
@@ -370,7 +372,7 @@ app.post('/api/auth/register/employee', async (req, res) => {
       // Insert new user with professional role
       const [result] = await connection.execute(
         'INSERT INTO user (org_id, role_id, employee_code, first_name, last_name, email, phone, password_hash, professional_role, professional_role_other, application_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [1, roleId, employeeId, firstName, surname, email, phone, hashedPassword, professionalRole, professionalRoleOther || null, 'employee']
+        [orgId, roleId, employeeId, firstName, surname, email, phone, hashedPassword, professionalRole, professionalRoleOther || null, 'employee']
       );
 
       const newUser = await getUserById(result.insertId);
