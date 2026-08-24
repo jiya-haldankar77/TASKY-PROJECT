@@ -38,7 +38,7 @@
           <q-select v-model="filterMonth" outlined dense :options="['This Month']" style="width: 140px;" bg-color="white" rounded>
             <template v-slot:prepend><q-icon name="o_calendar_today" size="18px" /></template>
           </q-select>
-          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" />
+          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" :loading="exporting" @click="exportReport" />
         </div>
       </div>
     </div>
@@ -101,6 +101,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useAuthStore } from '../stores/authStore';
 import { useAnalyticsStore } from '../stores/analyticsStore';
 import StatCard from '../components/StatCard.vue';
@@ -114,9 +115,11 @@ import UpcomingDeadlineRisks from '../components/UpcomingDeadlineRisks.vue';
 const router = useRouter();
 const authStore = useAuthStore();
 const analyticsStore = useAnalyticsStore();
+const $q = useQuasar();
 
 const searchQuery = ref('');
 const filterMonth = ref('This Month');
+const exporting = ref(false);
 
 onMounted(() => {
   analyticsStore.loadAll();
@@ -125,6 +128,40 @@ onMounted(() => {
 const logout = () => {
   authStore.logout();
   router.push('/auth/login');
+};
+
+const csvCell = (value: unknown) => {
+  const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value as string | number | boolean);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+const exportReport = () => {
+  exporting.value = true;
+  try {
+    const rows = analyticsStore.projectPerformance.map((project: any) => [
+      project.name,
+      project.status,
+      project.progress,
+      project.total_tasks,
+      project.completed_tasks,
+      project.overdue_tasks,
+      project.total_hours_logged,
+      project.total_estimated_hours
+    ]);
+    const csv = [
+      ['Project', 'Status', 'Progress (%)', 'Total Tasks', 'Completed Tasks', 'Overdue Tasks', 'Hours Logged', 'Estimated Hours'],
+      ...rows
+    ].map(row => row.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tasky-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    $q.notify({ type: 'positive', message: 'Analytics report exported' });
+  } finally {
+    exporting.value = false;
+  }
 };
 </script>
 

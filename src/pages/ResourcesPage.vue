@@ -36,7 +36,7 @@
         </div>
         <div class="row q-gutter-sm">
           <q-btn unelevated color="teal-6" icon="autorenew" label="Auto Schedule & Rebalance" no-caps class="rounded-borders" @click="handleRebalance" :loading="rebalancing" />
-          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" />
+          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" :loading="exporting" @click="exportReport" />
         </div>
       </div>
     </div>
@@ -86,6 +86,7 @@ const $q = useQuasar();
 
 const searchQuery = ref('');
 const rebalancing = ref(false);
+const exporting = ref(false);
 
 const handleRebalance = async () => {
   rebalancing.value = true;
@@ -118,6 +119,39 @@ const onSearch = () => {
 const logout = () => {
   authStore.logout();
   router.push('/auth/login');
+};
+
+const csvCell = (value: unknown) => {
+  const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value as string | number | boolean);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+const exportReport = () => {
+  exporting.value = true;
+  try {
+    const rows = resourceStore.resources.map((resource: any) => [
+      `${resource.first_name || ''} ${resource.last_name || ''}`.trim(),
+      resource.email,
+      resource.role_name,
+      resource.utilization,
+      resource.active_task_count,
+      resource.max_hours_per_week,
+      resource.weekly_required_hours
+    ]);
+    const csv = [
+      ['Resource', 'Email', 'Role', 'Utilization (%)', 'Active Tasks', 'Max Weekly Hours', 'Required Weekly Hours'],
+      ...rows
+    ].map(row => row.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tasky-resource-workload-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    $q.notify({ type: 'positive', message: 'Resource report exported' });
+  } finally {
+    exporting.value = false;
+  }
 };
 
 const overloadedCount = computed(() => {
