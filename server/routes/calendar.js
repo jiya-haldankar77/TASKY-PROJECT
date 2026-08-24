@@ -12,7 +12,7 @@ export default function calendarRoutes(pool) {
 
       // Fetch all non-completed tasks for projects created by this PM
       let query = `
-        SELECT t.id, t.title, t.start_date, t.deadline, t.status, t.priority,
+        SELECT t.id, t.title, t.start_date, t.deadline, t.status, t.priority, t.progress,
           p.name AS project_name, p.color AS project_color
         FROM task t
         JOIN project p ON p.id = t.project_id
@@ -28,7 +28,16 @@ export default function calendarRoutes(pool) {
       const [tasks] = await pool.execute(query, params);
 
       // Map to calendar events format
-      const events = tasks.map(t => ({
+      const events = [];
+      for (const t of tasks) {
+        const [assignees] = await pool.execute(`
+          SELECT u.id, u.first_name, u.last_name, u.avatar
+          FROM task_assignment ta
+          JOIN user u ON u.id = ta.user_id
+          WHERE ta.task_id = ? AND ta.is_active = 1 AND u.org_id = ?
+        `, [t.id, orgId]);
+
+        events.push({
         id: `task_${t.id}`,
         title: t.title,
         start: t.start_date || t.deadline, // Fallback to deadline if no start date
@@ -39,9 +48,16 @@ export default function calendarRoutes(pool) {
           type: 'task',
           status: t.status,
           priority: t.priority,
-          projectName: t.project_name
+          projectName: t.project_name,
+          progress: Number(t.progress || 0),
+          assignees: assignees.map(a => ({
+            id: a.id,
+            name: `${a.first_name} ${a.last_name}`,
+            avatar: a.avatar
+          }))
         }
-      }));
+        });
+      }
 
       res.json({ success: true, events });
     } catch (error) {

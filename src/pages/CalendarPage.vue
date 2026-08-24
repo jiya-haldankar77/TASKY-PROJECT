@@ -10,13 +10,7 @@
           <div class="text-grey-7 text-caption">Visualize task deadlines, resource availability, and milestones</div>
         </div>
       </div>
-      <div class="row items-center q-gutter-sm">
-        <q-btn-group unelevated class="bg-white border-grey-3">
-          <q-btn flat dense no-caps color="grey-8" label="List" class="q-px-md" :class="{'bg-indigo-1 text-indigo text-weight-bold': viewMode === 'list'}" @click="viewMode = 'list'" />
-          <q-btn flat dense no-caps color="grey-8" label="Timeline" class="q-px-md" :class="{'bg-indigo-1 text-indigo text-weight-bold': viewMode === 'timeline'}" @click="viewMode = 'timeline'" />
-        </q-btn-group>
-        <q-btn unelevated color="indigo" icon="add" label="Add Event" no-caps class="rounded-borders" />
-      </div>
+      <q-btn unelevated color="indigo" icon="add" label="Add Event" no-caps class="rounded-borders" />
     </div>
 
     <!-- Main Content -->
@@ -43,37 +37,34 @@
         <q-spinner-dots size="40px" color="primary" />
       </div>
 
-      <!-- Events List -->
-      <div v-else-if="viewMode === 'list'" class="full-width" style="flex: 1 1 0; overflow-y: auto;">
-        <q-list separator>
-          <q-item v-for="event in sortedEvents" :key="event.id || Math.random()" class="q-py-md">
-            <q-item-section avatar>
-              <q-avatar :color="getEventColor(event.type)" text-color="white" :icon="getEventIcon(event.type)" />
-            </q-item-section>
-            
-            <q-item-section>
-              <q-item-label class="text-weight-bold text-grey-9">{{ event.title }}</q-item-label>
-              <q-item-label caption class="text-grey-7">{{ getEventDescription(event) }}</q-item-label>
-            </q-item-section>
-
-            <q-item-section side top>
-              <div class="text-weight-medium text-grey-8">{{ formatDate(event.start) }}</div>
-              <q-badge v-if="event.status" :color="getStatusColor(event.status)" :label="event.status" outline class="q-mt-xs" />
-            </q-item-section>
-          </q-item>
-        </q-list>
-        
-        <div v-if="sortedEvents.length === 0" class="flex flex-center full-height text-grey-6 text-subtitle1">
-          No events found for this period.
+      <!-- Resource timeline -->
+      <div class="resource-timeline" style="flex: 1 1 0;">
+        <div class="timeline-head">
+          <div class="resource-col text-caption text-grey-7 text-weight-bold">RESOURCE</div>
+          <div class="days-col" :style="{ gridTemplateColumns: `repeat(${monthDays.length}, minmax(28px, 1fr))` }">
+            <div v-for="day in monthDays" :key="day.key" class="day-label" :class="{ 'today-label': day.isToday }">{{ day.label }}</div>
+          </div>
+          <div class="completion-col text-caption text-grey-7 text-weight-bold">COMPLETE</div>
         </div>
-      </div>
 
-      <!-- Timeline (Placeholder) -->
-      <div v-else class="full-width flex flex-center bg-grey-1" style="flex: 1 1 0; border-radius: 8px; border: 1px dashed #ccc;">
-        <div class="text-center">
-          <q-icon name="view_timeline" size="64px" color="grey-4" class="q-mb-sm" />
-          <div class="text-h6 text-grey-8">Gantt View Coming Soon</div>
-          <div class="text-caption text-grey-6">The interactive timeline drag-and-drop feature is under construction.</div>
+        <div v-if="resourceRows.length === 0" class="empty-timeline">
+          <q-icon name="view_timeline" size="48px" color="grey-4" />
+          <div class="text-subtitle1 text-grey-7 q-mt-sm">No assigned tasks this month.</div>
+        </div>
+        <div v-for="row in resourceRows" :key="row.id" class="timeline-row">
+          <div class="resource-col resource-name">
+            <q-avatar size="30px" color="indigo-1" text-color="indigo" :src="row.avatar || undefined">{{ row.initials }}</q-avatar>
+            <div class="ellipsis q-ml-sm">{{ row.name }}</div>
+          </div>
+          <div class="days-col task-track" :style="{ gridTemplateColumns: `repeat(${monthDays.length}, minmax(28px, 1fr))` }">
+            <div v-for="day in monthDays" :key="day.key" class="day-cell" :class="{ 'today-cell': day.isToday }" />
+            <q-tooltip v-if="row.tasks.length">{{ row.tasks.map((task: any) => task.title).join(' • ') }}</q-tooltip>
+            <div v-for="task in row.tasks" :key="task.id" class="task-bar" :style="task.style" :class="`task-${task.status}`">
+              <span class="task-title">{{ task.title }}</span>
+              <span class="task-progress">{{ task.progress }}%</span>
+            </div>
+          </div>
+          <div class="completion-col completion-value" :class="completionClass(row.completion)">{{ row.completion }}%</div>
         </div>
       </div>
 
@@ -83,61 +74,62 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useCalendarStore } from '../stores/calendarStore';
-import { date } from 'quasar';
 
 const calendarStore = useCalendarStore();
-const viewMode = ref('list');
-
 onMounted(() => {
   calendarStore.fetchCalendarData();
 });
 
-const sortedEvents = computed(() => {
-  if (!calendarStore.events) return [];
-  return [...calendarStore.events].sort((a, b) => {
-    return new Date(a.start).getTime() - new Date(b.start).getTime();
+const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+const monthDays = computed(() => Array.from({ length: monthEnd.getDate() }, (_, index) => {
+  const current = new Date(monthStart.getFullYear(), monthStart.getMonth(), index + 1);
+  return { key: current.toISOString().slice(0, 10), label: current.getDate(), isToday: current.toDateString() === new Date().toDateString() };
+}));
+
+const resourceRows = computed(() => {
+  const rows = new Map<string, any>();
+  const tasks = calendarStore.events.filter(event => event.extendedProps?.type === 'task');
+  tasks.forEach(event => {
+    const assignees = event.extendedProps.assignees?.length ? event.extendedProps.assignees : [{ id: 'unassigned', name: 'Unassigned' }];
+    assignees.forEach((assignee: any) => {
+      const id = String(assignee.id);
+      if (!rows.has(id)) rows.set(id, { id, name: assignee.name, avatar: assignee.avatar, initials: assignee.name.split(' ').map((part: string) => part[0]).join('').slice(0, 2), tasks: [] });
+      const start = new Date(event.start);
+      const end = new Date(event.end || event.start);
+      const startDay = Math.max(1, start < monthStart ? 1 : start.getDate());
+      const endDay = Math.min(monthEnd.getDate(), end > monthEnd ? monthEnd.getDate() : end.getDate());
+      const left = ((startDay - 1) / monthDays.value.length) * 100;
+      const width = Math.max((Math.max(1, endDay - startDay + 1) / monthDays.value.length) * 100, 3);
+      rows.get(id).tasks.push({ id: event.id, title: event.title, status: event.extendedProps.status, progress: event.extendedProps.progress || 0, style: { left: `${left}%`, width: `${width}%` } });
+    });
   });
+  return [...rows.values()].map(row => ({ ...row, completion: row.tasks.length ? Math.round(row.tasks.reduce((total: number, task: any) => total + task.progress, 0) / row.tasks.length) : 0 }));
 });
 
-const formatDate = (val: string) => {
-  if (!val) return 'TBD';
-  return date.formatDate(val, 'MMM D, YYYY');
-};
-
-const getEventColor = (type: string) => {
-  if (type === 'task') return 'blue';
-  if (type === 'milestone') return 'orange';
-  if (type === 'leave') return 'red';
-  if (type === 'availability') return 'green';
-  return 'grey';
-};
-
-const getEventIcon = (type: string) => {
-  if (type === 'task') return 'assignment';
-  if (type === 'milestone') return 'flag';
-  if (type === 'leave') return 'flight_takeoff';
-  if (type === 'availability') return 'event_available';
-  return 'event';
-};
-
-const getStatusColor = (status: string) => {
-  if (status === 'completed') return 'green';
-  if (status === 'in-progress') return 'blue';
-  if (status === 'blocked') return 'red';
-  return 'grey';
-};
-
-const getEventDescription = (event: any) => {
-  if (event.type === 'task') return `${event.project_name || 'Project'} • Assigned to ${event.assignee_name || 'Unassigned'}`;
-  if (event.type === 'leave') return `Resource: ${event.resource_name || 'Unknown'}`;
-  return event.description || '';
-};
+const completionClass = (completion: number) => completion >= 100 ? 'text-positive' : completion >= 60 ? 'text-indigo' : 'text-orange';
 </script>
 
 <style scoped>
 .border-grey-3 {
   border: 1px solid #e0e0e0;
 }
+.resource-timeline { overflow: auto; border: 1px solid #edf0f5; border-radius: 10px; min-width: 760px; }
+.timeline-head, .timeline-row { display: grid; grid-template-columns: 190px minmax(420px, 1fr) 78px; align-items: center; }
+.timeline-head { min-height: 42px; background: #f7f8fb; border-bottom: 1px solid #e8ebf0; position: sticky; top: 0; z-index: 2; }
+.timeline-row { min-height: 64px; border-bottom: 1px solid #f0f2f5; }
+.resource-col, .completion-col { padding: 0 14px; }
+.resource-name { display: flex; align-items: center; min-width: 0; font-weight: 600; color: #3b4658; }
+.days-col { display: grid; height: 100%; position: relative; }
+.day-label { text-align: center; padding-top: 13px; font-size: 11px; color: #8c98aa; }
+.today-label { color: #4f46e5; font-weight: 700; }
+.task-track { min-height: 64px; align-items: center; }
+.day-cell { height: 100%; border-left: 1px solid #f1f3f6; grid-row: 1; }
+.today-cell { background: #f2f2ff; }
+.task-bar { position: absolute; z-index: 1; top: 21px; height: 23px; border-radius: 6px; padding: 3px 7px; display: flex; justify-content: space-between; gap: 6px; align-items: center; color: white; font-size: 11px; overflow: hidden; box-shadow: 0 2px 5px #263e7a25; }
+.task-not-started { background: #64748b; }.task-in-progress { background: #4f46e5; }.task-completed { background: #16a34a; }.task-blocked { background: #dc2626; }
+.task-title, .task-progress { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.task-progress { font-weight: 700; }
+.completion-value { font-weight: 700; font-size: 13px; }.empty-timeline { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 </style>
