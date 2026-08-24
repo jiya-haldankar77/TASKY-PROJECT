@@ -10,7 +10,7 @@
           <div class="text-grey-7 text-caption">Visualize task deadlines, resource availability, and milestones</div>
         </div>
       </div>
-      <q-btn unelevated color="indigo" icon="add" label="Add Event" no-caps class="rounded-borders" />
+      <q-btn unelevated color="indigo" icon="add" label="Add Event" no-caps class="rounded-borders" @click="showCreateDialog = true" />
     </div>
 
     <!-- Main Content -->
@@ -19,9 +19,9 @@
       <!-- Toolbar -->
       <div class="row items-center justify-between q-mb-md" style="flex: 0 0 auto;">
         <div class="row items-center q-gutter-x-sm">
-          <q-btn flat round dense icon="chevron_left" color="grey-8" />
-          <div class="text-subtitle1 text-weight-bold q-px-sm">Current Month</div>
-          <q-btn flat round dense icon="chevron_right" color="grey-8" />
+          <q-btn flat round dense icon="chevron_left" color="grey-8" aria-label="Previous month" @click="changeMonth(-1)" />
+          <div class="text-subtitle1 text-weight-bold q-px-sm">{{ monthLabel }}</div>
+          <q-btn flat round dense icon="chevron_right" color="grey-8" aria-label="Next month" @click="changeMonth(1)" />
         </div>
         
         <div class="row items-center q-gutter-x-sm">
@@ -71,21 +71,32 @@
     </div>
 
   </q-page>
+  <CreateTaskDialog v-model="showCreateDialog" @saved="refreshCalendar" />
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useCalendarStore } from '../stores/calendarStore';
+import CreateTaskDialog from '../components/CreateTaskDialog.vue';
 
 const calendarStore = useCalendarStore();
+const showCreateDialog = ref(false);
+const currentDate = ref(new Date());
+const monthStart = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1));
+const monthEnd = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0));
+const monthLabel = computed(() => currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+const toApiDate = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+const refreshCalendar = () => calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(monthEnd.value));
+const changeMonth = (offset: number) => {
+  currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + offset, 1);
+  refreshCalendar();
+};
 onMounted(() => {
-  calendarStore.fetchCalendarData();
+  refreshCalendar();
 });
 
-const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-const monthDays = computed(() => Array.from({ length: monthEnd.getDate() }, (_, index) => {
-  const current = new Date(monthStart.getFullYear(), monthStart.getMonth(), index + 1);
+const monthDays = computed(() => Array.from({ length: monthEnd.value.getDate() }, (_, index) => {
+  const current = new Date(monthStart.value.getFullYear(), monthStart.value.getMonth(), index + 1);
   return { key: current.toISOString().slice(0, 10), label: current.getDate(), isToday: current.toDateString() === new Date().toDateString() };
 }));
 
@@ -99,8 +110,8 @@ const resourceRows = computed(() => {
       if (!rows.has(id)) rows.set(id, { id, name: assignee.name, avatar: assignee.avatar, initials: assignee.name.split(' ').map((part: string) => part[0]).join('').slice(0, 2), tasks: [] });
       const start = new Date(event.start);
       const end = new Date(event.end || event.start);
-      const startDay = Math.max(1, start < monthStart ? 1 : start.getDate());
-      const endDay = Math.min(monthEnd.getDate(), end > monthEnd ? monthEnd.getDate() : end.getDate());
+      const startDay = Math.max(1, start < monthStart.value ? 1 : start.getDate());
+      const endDay = Math.min(monthEnd.value.getDate(), end > monthEnd.value ? monthEnd.value.getDate() : end.getDate());
       const left = ((startDay - 1) / monthDays.value.length) * 100;
       const width = Math.max((Math.max(1, endDay - startDay + 1) / monthDays.value.length) * 100, 3);
       rows.get(id).tasks.push({ id: event.id, title: event.title, status: event.extendedProps.status, progress: event.extendedProps.progress || 0, style: { left: `${left}%`, width: `${width}%` } });
