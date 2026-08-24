@@ -356,8 +356,8 @@ app.post('/api/auth/register/employee', async (req, res) => {
 
       // Get employee role ID (role_id for employee access level)
       const [roleRows] = await connection.execute(
-        'SELECT id FROM role WHERE access_level = ? LIMIT 1',
-        ['employee']
+        'SELECT id FROM role WHERE org_id = ? AND access_level = ? LIMIT 1',
+        [orgId, 'employee']
       );
 
       if (roleRows.length === 0) {
