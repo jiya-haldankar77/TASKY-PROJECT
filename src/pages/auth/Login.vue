@@ -412,7 +412,7 @@ onBeforeUnmount(() => {
 }
 
 .login-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   text-align: center;
 }
 
@@ -434,7 +434,7 @@ onBeforeUnmount(() => {
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.1rem;
 }
 
 .form-section {
@@ -478,7 +478,7 @@ onBeforeUnmount(() => {
   font-size: 1rem;
   padding: 0.875rem;
   border-radius: 8px;
-  margin-top: 0.5rem;
+  margin-top: 0;
   transition: all 0.3s ease;
 }
 

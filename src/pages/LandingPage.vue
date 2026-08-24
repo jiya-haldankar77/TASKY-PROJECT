@@ -285,6 +285,8 @@ const scrollToFeatures = () => {
 .cta-button.large {
   padding: 1.25rem 3rem;
   font-size: 1.125rem;
+  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  color: #1a1a2e;
 }
 
 /* Background Elements */

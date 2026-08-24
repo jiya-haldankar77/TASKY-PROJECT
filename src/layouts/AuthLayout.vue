@@ -88,19 +88,25 @@
 
 <style scoped>
 .auth-container {
+  height: 100vh;
   min-height: 100vh;
   background: #f8f9fa;
+  overflow: hidden;
 }
 
 .auth-page {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 .auth-split {
   display: flex;
-  min-height: 100vh;
+  width: 100%;
   height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .auth-visual-panel {
@@ -109,10 +115,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 3rem;
+  justify-content: flex-start;
+  padding: 2.5rem 3rem 2rem;
   position: relative;
-  overflow-y: auto;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .auth-visual-panel::before {
@@ -137,7 +144,7 @@
 }
 
 .brand-section {
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
 }
 
 .brand-logo {
@@ -171,14 +178,14 @@
 .features-section {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.25rem;
 }
 
 .feature-item {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   border: 1px solid rgba(196, 246, 79, 0.1);
@@ -230,15 +237,16 @@
   justify-content: center;
   padding: 2rem;
   background: #ffffff;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .form-content {
   width: 100%;
   max-width: 480px;
-  overflow-y: auto;
   padding: 1rem;
-  flex: 1;
+  min-height: 0;
 }
 
 /* Responsive Design */
