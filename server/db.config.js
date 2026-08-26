@@ -9,5 +9,6 @@ export const dbConfig = {
   database: process.env.DB_NAME || 'tasky',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  dateStrings: true
 };

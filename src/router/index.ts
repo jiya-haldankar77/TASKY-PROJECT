@@ -36,7 +36,7 @@ export default defineRouter((/* { store, ssrContext } */) => {
   });
 
   // Navigation guards
-  Router.beforeEach((to, from, next) => {
+  Router.beforeEach((to) => {
     const authStore = useAuthStore();
     
     // Initialize auth state from localStorage
@@ -47,32 +47,32 @@ export default defineRouter((/* { store, ssrContext } */) => {
 
     // Allow landing page and auth routes to be accessible without authentication
     if (to.path === '/' || to.path.startsWith('/auth')) {
-      next();
-      return;
+      return true;
     }
 
     if (requiresAuth && !authStore.isAuthenticated) {
       // Redirect to login if not authenticated
-      next('/auth/login');
+      return '/auth/login';
     } else if (requiresRole && authStore.userRole !== requiresRole) {
       // Redirect to appropriate dashboard based on role
       if (authStore.userRole === 'pm') {
-        next('/dashboard');
+        return '/dashboard';
       } else if (authStore.userRole === 'employee') {
-        next('/dashboard/employee-dashboard');
+        return '/dashboard/employee-dashboard';
       } else {
-        next('/auth/login');
+        return '/auth/login';
       }
     } else if (to.path === '/auth/login' && authStore.isAuthenticated) {
       // Redirect authenticated users away from login
       if (authStore.userRole === 'pm') {
-        next('/dashboard');
+        return '/dashboard';
       } else {
         // Redirect employees to separate employee 2 project
         window.location.href = 'http://localhost:9004/';
+        return false;
       }
     } else {
-      next();
+      return true;
     }
   });
   return Router;

@@ -36,6 +36,7 @@
       <div v-if="calendarStore.loading" class="flex flex-center full-height full-width">
         <q-spinner-dots size="40px" color="primary" />
       </div>
+      <q-banner v-else-if="calendarStore.error" dense rounded class="bg-red-1 text-red q-mb-md">{{ calendarStore.error }}</q-banner>
 
       <!-- Resource timeline -->
       <div class="resource-timeline" style="flex: 1 1 0;">
@@ -49,7 +50,7 @@
 
         <div v-if="resourceRows.length === 0" class="empty-timeline">
           <q-icon name="view_timeline" size="48px" color="grey-4" />
-          <div class="text-subtitle1 text-grey-7 q-mt-sm">No assigned tasks this month.</div>
+          <div class="text-subtitle1 text-grey-7 q-mt-sm">No calendar events this month.</div>
         </div>
         <div v-for="row in resourceRows" :key="row.id" class="timeline-row">
           <div class="resource-col resource-name">
@@ -58,10 +59,10 @@
           </div>
           <div class="days-col task-track" :style="{ gridTemplateColumns: `repeat(${monthDays.length}, minmax(28px, 1fr))` }">
             <div v-for="day in monthDays" :key="day.key" class="day-cell" :class="{ 'today-cell': day.isToday }" />
-            <q-tooltip v-if="row.tasks.length">{{ row.tasks.map((task: any) => task.title).join(' • ') }}</q-tooltip>
-            <div v-for="task in row.tasks" :key="task.id" class="task-bar" :style="task.style" :class="`task-${task.status}`">
-              <span class="task-title">{{ task.title }}</span>
-              <span class="task-progress">{{ task.progress }}%</span>
+            <q-tooltip v-if="row.events.length">{{ row.events.map((event: any) => event.title).join(' • ') }}</q-tooltip>
+            <div v-for="event in row.events" :key="event.id" class="task-bar" :style="event.style" :class="`event-${event.type}`">
+              <span class="task-title">{{ event.title }}</span>
+              <span v-if="event.type === 'task'" class="task-progress">{{ event.progress }}%</span>
             </div>
           </div>
           <div class="completion-col completion-value" :class="completionClass(row.completion)">{{ row.completion }}%</div>
@@ -84,9 +85,10 @@ const showCreateDialog = ref(false);
 const currentDate = ref(new Date());
 const monthStart = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1));
 const monthEnd = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0));
+const nextMonthStart = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 1));
 const monthLabel = computed(() => currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
 const toApiDate = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
-const refreshCalendar = () => calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(monthEnd.value));
+const refreshCalendar = () => calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(nextMonthStart.value));
 const changeMonth = (offset: number) => {
   currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + offset, 1);
   refreshCalendar();
@@ -97,27 +99,41 @@ onMounted(() => {
 
 const monthDays = computed(() => Array.from({ length: monthEnd.value.getDate() }, (_, index) => {
   const current = new Date(monthStart.value.getFullYear(), monthStart.value.getMonth(), index + 1);
-  return { key: current.toISOString().slice(0, 10), label: current.getDate(), isToday: current.toDateString() === new Date().toDateString() };
+  return { key: toApiDate(current), label: current.getDate(), isToday: current.toDateString() === new Date().toDateString() };
 }));
+
+const parseDateOnly = (value: string) => {
+  const [year = 1970, month = 1, day = 1] = value.slice(0, 10).split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+const addDays = (date: Date, amount: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
 
 const resourceRows = computed(() => {
   const rows = new Map<string, any>();
-  const tasks = calendarStore.events.filter(event => event.extendedProps?.type === 'task');
-  tasks.forEach(event => {
-    const assignees = event.extendedProps.assignees?.length ? event.extendedProps.assignees : [{ id: 'unassigned', name: 'Unassigned' }];
-    assignees.forEach((assignee: any) => {
-      const id = String(assignee.id);
-      if (!rows.has(id)) rows.set(id, { id, name: assignee.name, avatar: assignee.avatar, initials: assignee.name.split(' ').map((part: string) => part[0]).join('').slice(0, 2), tasks: [] });
-      const start = new Date(event.start);
-      const end = new Date(event.end || event.start);
+  calendarStore.events.forEach(event => {
+    const type = event.extendedProps?.type;
+    const people = type === 'task'
+      ? (event.extendedProps.assignees?.length ? event.extendedProps.assignees : [{ id: 'unassigned', name: 'Unassigned' }])
+      : [{ id: event.extendedProps.employeeId, name: event.extendedProps.employee, avatar: event.extendedProps.avatar }];
+    people.forEach((person: any) => {
+      if (!person.id || !person.name) return;
+      const id = String(person.id);
+      if (!rows.has(id)) rows.set(id, { id, name: person.name, avatar: person.avatar, initials: person.name.split(' ').map((part: string) => part[0]).join('').slice(0, 2), events: [] });
+      const start = parseDateOnly(event.start);
+      // API event ends are exclusive, while this custom month grid is inclusive.
+      const exclusiveEnd = parseDateOnly(event.end || event.start);
+      const end = addDays(exclusiveEnd, -1);
       const startDay = Math.max(1, start < monthStart.value ? 1 : start.getDate());
       const endDay = Math.min(monthEnd.value.getDate(), end > monthEnd.value ? monthEnd.value.getDate() : end.getDate());
       const left = ((startDay - 1) / monthDays.value.length) * 100;
       const width = Math.max((Math.max(1, endDay - startDay + 1) / monthDays.value.length) * 100, 3);
-      rows.get(id).tasks.push({ id: event.id, title: event.title, status: event.extendedProps.status, progress: event.extendedProps.progress || 0, style: { left: `${left}%`, width: `${width}%` } });
+      rows.get(id).events.push({ id: event.id, title: event.title, type, progress: event.extendedProps.progress || 0, style: { left: `${left}%`, width: `${width}%`, backgroundColor: event.backgroundColor } });
     });
   });
-  return [...rows.values()].map(row => ({ ...row, completion: row.tasks.length ? Math.round(row.tasks.reduce((total: number, task: any) => total + task.progress, 0) / row.tasks.length) : 0 }));
+  return [...rows.values()].map(row => {
+    const tasks = row.events.filter((event: any) => event.type === 'task');
+    return { ...row, completion: tasks.length ? Math.round(tasks.reduce((total: number, task: any) => total + task.progress, 0) / tasks.length) : 0 };
+  });
 });
 
 const completionClass = (completion: number) => completion >= 100 ? 'text-positive' : completion >= 60 ? 'text-indigo' : 'text-orange';
@@ -140,7 +156,7 @@ const completionClass = (completion: number) => completion >= 100 ? 'text-positi
 .day-cell { height: 100%; border-left: 1px solid #f1f3f6; grid-row: 1; }
 .today-cell { background: #f2f2ff; }
 .task-bar { position: absolute; z-index: 1; top: 21px; height: 23px; border-radius: 6px; padding: 3px 7px; display: flex; justify-content: space-between; gap: 6px; align-items: center; color: white; font-size: 11px; overflow: hidden; box-shadow: 0 2px 5px #263e7a25; }
-.task-not-started { background: #64748b; }.task-in-progress { background: #4f46e5; }.task-completed { background: #16a34a; }.task-blocked { background: #dc2626; }
+.event-task { background: #4f46e5; }.event-availability { background: #e0e0e0; color: #333; }.event-leave { background: #4CAF50; }
 .task-title, .task-progress { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }.task-progress { font-weight: 700; }
 .completion-value { font-weight: 700; font-size: 13px; }.empty-timeline { height: 100%; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 </style>

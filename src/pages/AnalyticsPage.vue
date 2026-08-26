@@ -35,7 +35,7 @@
           </q-avatar>
         </div>
         <div class="row q-gutter-sm">
-          <q-select v-model="filterMonth" outlined dense :options="['This Month']" style="width: 140px;" bg-color="white" rounded>
+          <q-select v-model="filterMonth" outlined dense :options="monthOptions" style="width: 140px;" bg-color="white" rounded @update:model-value="loadAnalytics">
             <template v-slot:prepend><q-icon name="o_calendar_today" size="18px" /></template>
           </q-select>
           <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" :loading="exporting" @click="exportReport" />
@@ -46,37 +46,19 @@
     <!-- Summary Cards -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col">
-        <StatCard title="Total Projects" :value="(analyticsStore.overview?.totalProjects || 0).toString()" color="indigo" icon="o_folder" caption="active" />
+        <StatCard title="Total Projects" :value="(analyticsStore.overview?.total_projects || 0).toString()" color="indigo" icon="o_folder" caption="active" />
       </div>
       <div class="col">
-        <StatCard title="Completion Rate" :value="`${analyticsStore.overview?.taskCompletionRate || 0}%`" color="green" icon="o_verified_user" :caption="`${analyticsStore.overview?.completedTasks || 0} tasks completed`">
-          <template v-slot:caption>
-            <span class="text-green"><q-icon name="arrow_upward" size="10px" /> 8%</span> from last month
-          </template>
-        </StatCard>
+        <StatCard title="Completion Rate" :value="`${analyticsStore.overview?.completion_rate || 0}%`" color="green" icon="o_verified_user" :caption="`${analyticsStore.overview?.completed_tasks || 0} tasks completed`" />
       </div>
       <div class="col">
-        <StatCard title="At Risk Tasks" :value="(analyticsStore.overview?.overdueTasks || 0).toString()" color="orange" icon="o_warning_amber" caption="delayed">
-          <template v-slot:caption>
-            <span class="text-orange"><q-icon name="arrow_downward" size="10px" /> 2%</span> from last month
-          </template>
-        </StatCard>
+        <StatCard title="At Risk Tasks" :value="(analyticsStore.overview?.overdue_tasks || 0).toString()" color="orange" icon="o_warning_amber" caption="delayed" />
       </div>
       <div class="col">
-        <StatCard title="Avg. Progress" :value="`${analyticsStore.overview?.avgProjectProgress || 0}%`" color="indigo" icon="o_pie_chart" caption="Across all projects">
-          <template v-slot:caption>
-            <span class="text-indigo"><q-icon name="arrow_upward" size="10px" /> 5%</span> from last month
-          </template>
-        </StatCard>
-      </div>
-      <div class="col">
-        <StatCard title="Team Utilization" :value="`${analyticsStore.overview?.avgUtilization || 0}%`" color="blue" icon="o_groups" caption="average capacity">
-          <template v-slot:caption>
-            <span class="text-blue"><q-icon name="arrow_upward" size="10px" /> 1%</span> from last month
-          </template>
-        </StatCard>
+        <StatCard title="Avg. Progress" :value="`${analyticsStore.overview?.avg_progress || 0}%`" color="indigo" icon="o_pie_chart" caption="Across all projects" />
       </div>
     </div>
+    <q-banner v-if="analyticsStore.error" dense rounded class="bg-red-1 text-red q-mb-md">{{ analyticsStore.error }}</q-banner>
 
     <!-- Main Content Split -->
     <div class="row q-col-gutter-lg">
@@ -99,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '../stores/authStore';
@@ -118,11 +100,26 @@ const analyticsStore = useAnalyticsStore();
 const $q = useQuasar();
 
 const searchQuery = ref('');
-const filterMonth = ref('This Month');
+const currentMonth = new Date();
+const monthOptions = Array.from({ length: 12 }, (_, offset) => {
+  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - offset, 1);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+});
+const filterMonth = ref(monthOptions[0] ?? '');
 const exporting = ref(false);
 
+const selectedRange = computed(() => {
+  const index = Math.max(0, monthOptions.indexOf(filterMonth.value));
+  const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - index, 1);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  const toDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return { start: toDate(start), end: toDate(end) };
+});
+
+const loadAnalytics = () => analyticsStore.loadAll(selectedRange.value);
+
 onMounted(() => {
-  analyticsStore.loadAll();
+  loadAnalytics();
 });
 
 const logout = () => {
