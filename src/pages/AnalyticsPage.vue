@@ -55,7 +55,7 @@
         <StatCard title="At Risk Tasks" :value="(analyticsStore.overview?.overdue_tasks || 0).toString()" color="orange" icon="o_warning_amber" caption="delayed" />
       </div>
       <div class="col">
-        <StatCard title="Avg. Progress" :value="`${analyticsStore.overview?.avg_progress || 0}%`" color="indigo" icon="o_pie_chart" caption="Across all projects" />
+        <StatCard title="Active Team" :value="(analyticsStore.overview?.total_members || 0).toString()" color="teal" icon="o_groups" caption="Currently assigned" />
       </div>
     </div>
     <q-banner v-if="analyticsStore.error" dense rounded class="bg-red-1 text-red q-mb-md">{{ analyticsStore.error }}</q-banner>

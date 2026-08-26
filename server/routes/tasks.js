@@ -46,7 +46,7 @@ export default function taskRoutes(pool) {
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' ORDER BY FIELD(t.priority,"critical","high","medium","low"), t.deadline ASC';
+      query += ' ORDER BY (t.status = "completed") ASC, FIELD(t.priority,"critical","high","medium","low"), t.deadline ASC';
 
       const [tasks] = await pool.execute(query, params);
 

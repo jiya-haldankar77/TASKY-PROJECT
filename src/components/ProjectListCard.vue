@@ -72,7 +72,7 @@
                   <q-item-section avatar><q-icon name="edit" size="sm" /></q-item-section>
                   <q-item-section>Edit Project</q-item-section>
                 </q-item>
-                <q-item clickable v-close-popup @click="$emit('mark-complete', project)" v-if="project.status !== 'completed'">
+                <q-item clickable v-close-popup @click="$emit('mark-complete', project)" v-if="project.status !== 'completed' && project.progress >= 100">
                   <q-item-section avatar><q-icon name="check_circle" size="sm" color="green" /></q-item-section>
                   <q-item-section class="text-green">Mark Complete</q-item-section>
                 </q-item>
@@ -129,11 +129,11 @@ const formattedPriority = computed(() => {
 
 const statusColor = computed(() => {
   const status = props.project.computed_status || props.project.status;
-  if (status === 'on-going') return 'blue-1';
+  if (status === 'active') return 'blue-1';
   if (status === 'not-started') return 'grey-2';
   if (status === 'completed') return 'green-1';
   if (status === 'delayed') return 'red-1';
-  if (status === 'pending-completion') return 'orange-1';
+  if (status === 'all-tasks-complete') return 'green-2';
   
   if (props.project.status === 'active') return 'blue-1';
   if (props.project.status === 'planning') return 'grey-2';
@@ -143,11 +143,11 @@ const statusColor = computed(() => {
 
 const statusTextColor = computed(() => {
   const status = props.project.computed_status || props.project.status;
-  if (status === 'on-going') return 'blue';
+  if (status === 'active') return 'blue';
   if (status === 'not-started') return 'grey-8';
   if (status === 'completed') return 'green';
   if (status === 'delayed') return 'red';
-  if (status === 'pending-completion') return 'orange';
+  if (status === 'all-tasks-complete') return 'green-8';
 
   if (props.project.status === 'active') return 'blue';
   if (props.project.status === 'planning') return 'grey-8';

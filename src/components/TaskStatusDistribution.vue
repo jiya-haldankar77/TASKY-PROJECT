@@ -55,17 +55,20 @@ const legendItems = computed(() => {
   
   if (total === 0) return [];
 
-  const items = [];
-  for (const [status, count] of Object.entries(statusData)) {
-    const c = count as number;
-    if (c > 0) {
-      items.push({
-        label: status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        value: c,
-        percent: Math.round((c / total) * 100),
-        color: statusColors[status] || '#757575'
-      });
-    }
+  const items: any[] = [];
+  if (Array.isArray(statusData)) {
+    statusData.forEach((item: any) => {
+      const status = item.status;
+      const c = Number(item.count);
+      if (c > 0) {
+        items.push({
+          label: status.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          value: c,
+          percent: Math.round((c / total) * 100),
+          color: statusColors[status] || '#757575'
+        });
+      }
+    });
   }
   return items.sort((a, b) => b.value - a.value);
 });

@@ -36,11 +36,12 @@ export default function projectRoutes(pool) {
       }
 
       // Sort
-      if (sort === 'oldest') query += ' ORDER BY p.created_at ASC';
-      else if (sort === 'priority') query += ' ORDER BY FIELD(p.priority, "critical","high","medium","low"), p.created_at DESC';
-      else if (sort === 'progress') query += ' ORDER BY p.progress DESC';
-      else if (sort === 'deadline') query += ' ORDER BY p.end_date ASC';
-      else query += ' ORDER BY p.created_at DESC';
+      const baseSort = ' (p.status = "completed") ASC,';
+      if (sort === 'oldest') query += ` ORDER BY${baseSort} p.created_at ASC`;
+      else if (sort === 'priority') query += ` ORDER BY${baseSort} FIELD(p.priority, "critical","high","medium","low"), p.created_at DESC`;
+      else if (sort === 'progress') query += ` ORDER BY${baseSort} p.progress DESC`;
+      else if (sort === 'deadline') query += ` ORDER BY${baseSort} p.end_date ASC`;
+      else query += ` ORDER BY${baseSort} p.created_at DESC`;
 
       const [projects] = await pool.execute(query, params);
 
@@ -61,14 +62,14 @@ export default function projectRoutes(pool) {
       projects.forEach(proj => {
         if (proj.status === 'completed') {
           proj.computed_status = 'completed';
-        } else if (proj.total_tasks > 0 && proj.completed_tasks === proj.total_tasks) {
-          proj.computed_status = 'pending-completion';
+        } else if (proj.progress >= 100) {
+          proj.computed_status = 'all-tasks-complete';
         } else if (proj.overdue_task_count > 0) {
           proj.computed_status = 'delayed';
-        } else if (proj.total_tasks === 0 || proj.progress == 0) {
-          proj.computed_status = 'not-started';
+        } else if (proj.team_count > 0 || proj.progress > 0) {
+          proj.computed_status = 'active';
         } else {
-          proj.computed_status = 'on-going';
+          proj.computed_status = 'not-started';
         }
       });
 
@@ -145,16 +146,19 @@ export default function projectRoutes(pool) {
       `, [projectId, projectId]);
 
       // Compute dynamic project status
+      const hasOverdue = tasks.some(t => t.status !== 'completed' && new Date(t.deadline) < new Date());
+      const hasTeam = team && team.length > 0;
+
       if (project.status === 'completed') {
         project.computed_status = 'completed';
-      } else if (project.total_tasks > 0 && project.completed_tasks === project.total_tasks) {
-        project.computed_status = 'pending-completion';
-      } else if (tasks.some(t => t.status !== 'completed' && new Date(t.deadline) < new Date())) {
+      } else if (project.progress >= 100) {
+        project.computed_status = 'all-tasks-complete';
+      } else if (hasOverdue) {
         project.computed_status = 'delayed';
-      } else if (project.total_tasks === 0 || project.progress == 0) {
-        project.computed_status = 'not-started';
+      } else if (hasTeam || project.progress > 0) {
+        project.computed_status = 'active';
       } else {
-        project.computed_status = 'on-going';
+        project.computed_status = 'not-started';
       }
 
       res.json({

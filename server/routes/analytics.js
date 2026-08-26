@@ -62,7 +62,7 @@ export default function analyticsRoutes(pool) {
       const { org_id: orgId, id: pmId } = req.user; const range = rangeFor(req.query);
       const taskRange = range ? ' AND COALESCE(t.start_date, t.deadline) < ? AND t.deadline >= ?' : '';
       const params = range ? [range.end, range.start, orgId, pmId] : [orgId, pmId];
-      const [byProject] = await pool.execute(`SELECT p.id, p.name, p.color, COALESCE(SUM(CASE WHEN ta2.cnt > 0 THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt ELSE 0 END), 0) AS total_hours FROM project p JOIN task t ON t.project_id = p.id AND t.status IN ('not-started', 'in-progress', 'blocked')${taskRange} LEFT JOIN (SELECT task_id, COUNT(*) AS cnt FROM task_assignment WHERE is_active = 1 GROUP BY task_id) ta2 ON ta2.task_id = t.id WHERE p.org_id = ? AND p.created_by = ? GROUP BY p.id, p.name, p.color ORDER BY total_hours DESC`, params);
+      const [byProject] = await pool.execute(`SELECT p.id, p.name, p.color, COALESCE(SUM(CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0 THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0) ELSE 0 END), 0) AS total_hours FROM project p JOIN task t ON t.project_id = p.id AND t.status IN ('not-started', 'in-progress', 'blocked')${taskRange} LEFT JOIN (SELECT task_id, COUNT(*) AS cnt FROM task_assignment WHERE is_active = 1 GROUP BY task_id) ta2 ON ta2.task_id = t.id WHERE p.org_id = ? AND p.created_by = ? GROUP BY p.id, p.name, p.color ORDER BY total_hours DESC`, params);
       res.json({ success: true, byProject });
     } catch (error) { fail(res, 'Resource workload analytics', error); }
   });

@@ -14,27 +14,21 @@
           <q-input v-model="form.description" label="Description" type="textarea" outlined dense rows="3" />
           
           <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-select v-model="form.status" :options="statusOptions" label="Status" outlined dense emit-value map-options />
-            </div>
-            <div class="col-6">
+            <div class="col-12">
               <q-select v-model="form.priority" :options="priorityOptions" label="Priority" outlined dense emit-value map-options />
             </div>
           </div>
           
           <div class="row q-col-gutter-md">
             <div class="col-6">
-              <q-input v-model="form.start_date" label="Start Date *" type="date" outlined dense :rules="[val => !!val || 'Required']" stack-label />
+              <q-input v-model="form.start_date" label="Start Date *" type="date" outlined dense :rules="[val => !!val || 'Required']" stack-label :disable="isEdit" />
             </div>
             <div class="col-6">
               <q-input v-model="form.end_date" label="Deadline *" type="date" outlined dense :rules="[val => !!val || 'Required']" stack-label />
             </div>
           </div>
 
-          <div class="q-mb-md">
-            <div class="text-caption text-grey-8 q-mb-xs">Theme Color</div>
-            <input v-model="form.color" type="color" style="width: 100px; height: 40px; cursor: pointer;" />
-          </div>
+
 
           <div class="row justify-end q-mt-lg">
             <q-btn label="Cancel" color="grey" flat v-close-popup class="q-mr-sm" />
@@ -64,12 +58,7 @@ const isOpen = ref(props.modelValue);
 const isEdit = ref(false);
 const loading = ref(false);
 
-const statusOptions = [
-  { label: 'Planning', value: 'planning' },
-  { label: 'Active', value: 'active' },
-  { label: 'On Hold', value: 'on-hold' },
-  { label: 'Completed', value: 'completed' },
-];
+
 
 const priorityOptions = [
   { label: 'Critical', value: 'critical' },

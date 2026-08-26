@@ -237,11 +237,11 @@ const formattedPriority = computed(() => {
 
 const statusColor = computed(() => {
   const s = projectStore.currentProject?.computed_status || projectStore.currentProject?.status;
-  if (s === 'on-going') return 'blue-1';
+  if (s === 'active') return 'blue-1';
   if (s === 'not-started') return 'grey-2';
   if (s === 'completed') return 'green-1';
   if (s === 'delayed') return 'red-1';
-  if (s === 'pending-completion') return 'orange-1';
+  if (s === 'all-tasks-complete') return 'green-2';
 
   if (projectStore.currentProject?.status === 'active') return 'green-1';
   if (projectStore.currentProject?.status === 'planning') return 'blue-1';
@@ -251,11 +251,11 @@ const statusColor = computed(() => {
 
 const statusTextColor = computed(() => {
   const s = projectStore.currentProject?.computed_status || projectStore.currentProject?.status;
-  if (s === 'on-going') return 'blue';
+  if (s === 'active') return 'blue';
   if (s === 'not-started') return 'grey-8';
   if (s === 'completed') return 'green';
   if (s === 'delayed') return 'red';
-  if (s === 'pending-completion') return 'orange';
+  if (s === 'all-tasks-complete') return 'green-8';
 
   if (projectStore.currentProject?.status === 'active') return 'green';
   if (projectStore.currentProject?.status === 'planning') return 'blue';

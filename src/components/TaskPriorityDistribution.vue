@@ -45,12 +45,19 @@ const items = computed(() => {
   
   if (total === 0) return [];
 
-  const result = [];
+  const result: any[] = [];
   const order = ['critical', 'high', 'medium', 'low'];
   
+  const priorityMap: Record<string, number> = {};
+  if (Array.isArray(priorityData)) {
+    priorityData.forEach((item: any) => {
+      priorityMap[item.priority] = Number(item.count);
+    });
+  }
+  
   for (const priority of order) {
-    if (priorityData[priority] !== undefined) {
-      const count = priorityData[priority];
+    if (priorityMap[priority] !== undefined) {
+      const count = priorityMap[priority];
       result.push({
         label: priority.charAt(0).toUpperCase() + priority.slice(1),
         value: count,

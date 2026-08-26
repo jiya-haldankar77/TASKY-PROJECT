@@ -68,12 +68,11 @@ export default function resourceRoutes(pool) {
         ORDER BY FIELD(t.priority,'critical','high','medium','low'), t.deadline ASC
       `, [userId]);
 
-      // Workload breakdown by project
       const [workloadByProject] = await pool.execute(`
         SELECT p.id, p.name, p.color,
           COALESCE(SUM(
-            CASE WHEN ta2.cnt > 0
-              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
+            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
+              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
               ELSE 0 END
           ), 0) AS hours
         FROM task t
@@ -148,8 +147,8 @@ export default function resourceRoutes(pool) {
       const [available] = await pool.execute(`
         SELECT u.id, u.first_name, u.last_name, u.avatar, r.name AS role_name,
           COALESCE(SUM(
-            CASE WHEN ta2.cnt > 0
-              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
+            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
+              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
               ELSE 0 END
           ), 0) AS remaining
         FROM user u
@@ -166,8 +165,8 @@ export default function resourceRoutes(pool) {
       const [unavailable] = await pool.execute(`
         SELECT u.id, u.first_name, u.last_name, u.avatar, r.name AS role_name,
           COALESCE(SUM(
-            CASE WHEN ta2.cnt > 0
-              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
+            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
+              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
               ELSE 0 END
           ), 0) AS remaining
         FROM user u
