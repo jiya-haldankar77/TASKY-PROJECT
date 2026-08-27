@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS `user` (
   `last_name`       VARCHAR(100)     NOT NULL,
   `email`           VARCHAR(255)     NOT NULL,
   `password_hash`   VARCHAR(255)     NOT NULL,
+  `password_reset_token_hash` CHAR(64) DEFAULT NULL,
+  `password_reset_expires_at` DATETIME DEFAULT NULL,
   `avatar_url`      VARCHAR(500)     DEFAULT NULL,
   `phone`           VARCHAR(20)      DEFAULT NULL,
   `skills`          JSON             DEFAULT NULL       COMMENT '["Vue.js","TypeScript","Node.js"]',

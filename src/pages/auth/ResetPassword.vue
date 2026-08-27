@@ -130,9 +130,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const loading = ref(false)
@@ -179,7 +181,12 @@ const handleSubmit = async () => {
   loading.value = true
   
   try {
-    const result = await authStore.resetPassword()
+    const token = typeof route.query.token === 'string' ? route.query.token : ''
+    if (!token) {
+      alert('This reset link is invalid or expired')
+      return
+    }
+    const result = await authStore.resetPassword(token, form.password)
     
     if (result.success) {
       showSuccessDialog.value = true

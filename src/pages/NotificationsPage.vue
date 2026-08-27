@@ -10,13 +10,14 @@
           <div class="text-grey-7 text-caption">System alerts and daily updates</div>
         </div>
       </div>
-      <q-btn unelevated outline color="indigo" icon="done_all" label="Mark all as read" no-caps class="rounded-borders bg-white" @click="markAllAsRead" :loading="notificationStore.loading" />
+      <q-btn unelevated outline color="indigo" icon="done_all" label="Mark all as read" no-caps class="rounded-borders bg-white" @click="markAllAsRead" :loading="notificationStore.isMarkingAllAsRead" :disable="notificationStore.isMarkingAllAsRead || notificationStore.isFetching" />
     </div>
 
     <!-- Feed -->
+    <q-banner v-if="notificationStore.error" dense rounded class="bg-red-1 text-red q-mb-md">{{ notificationStore.error }}</q-banner>
     <q-card flat bordered class="bg-white" style="flex: 1 1 0; display: flex; flex-direction: column;">
       
-      <div v-if="notificationStore.loading && notificationStore.notifications.length === 0" class="flex flex-center full-height">
+      <div v-if="notificationStore.isFetching && notificationStore.notifications.length === 0" class="flex flex-center full-height">
         <q-spinner-dots size="40px" color="primary" />
       </div>
 
@@ -32,12 +33,13 @@
               <q-item-label caption class="text-grey-8 q-mt-xs">{{ notif.message }}</q-item-label>
               
               <div v-if="!notif.is_read" class="q-mt-sm row q-gutter-sm">
-                <q-btn unelevated color="indigo" label="Mark as read" size="sm" no-caps @click="markAsRead(notif.id)" />
+                <q-btn unelevated color="indigo" label="Mark as read" size="sm" no-caps @click="markAsRead(notif.id)" :loading="notificationStore.isMarkingAsRead" :disable="notificationStore.isMarkingAsRead" />
               </div>
             </q-item-section>
             
             <q-item-section side top>
               <q-item-label caption>{{ formatDate(notif.created_at) }}</q-item-label>
+              <q-btn flat round dense icon="delete_outline" color="grey-6" :loading="notificationStore.isDeleting" :disable="notificationStore.isDeleting" @click="deleteNotification(notif.id)" aria-label="Delete notification" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -65,11 +67,15 @@ onMounted(() => {
 });
 
 const markAsRead = async (id: string | number) => {
-  await notificationStore.markAsRead(id.toString());
+  await notificationStore.markAsRead(Number(id));
 };
 
 const markAllAsRead = async () => {
   await notificationStore.markAllAsRead();
+};
+
+const deleteNotification = async (id: number) => {
+  await notificationStore.deleteNotification(id);
 };
 
 const formatDate = (val: string) => {

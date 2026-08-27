@@ -48,6 +48,8 @@ export const useAuthStore = defineStore('auth', () => {
 
       const data = await response.json()
 
+      if (!response.ok) return { success: false, error: data.error || `Login failed (${response.status})` }
+
       if (data.success) {
         user.value = data.user
         token.value = data.token
@@ -147,17 +149,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const resetPassword = async () => {
+  const resetPassword = async (token: string, newPassword: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ newPassword: '' }),
+        body: JSON.stringify({ token, newPassword }),
       })
 
       const data = await response.json()
+
+      if (!response.ok) return { success: false, error: data.error || `Password reset failed (${response.status})` }
 
       if (data.success) {
         return { success: true, message: data.message }
@@ -185,11 +189,14 @@ export const useAuthStore = defineStore('auth', () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token.value}`,
         },
         body: JSON.stringify(profileData),
       })
 
       const data = await response.json()
+
+      if (!response.ok) return { success: false, error: data.error || `Profile update failed (${response.status})` }
 
       if (data.success) {
         user.value = { ...user.value, ...data.user }

@@ -88,9 +88,9 @@
           <div class="success-icon">
             <q-icon name="check_circle" size="64px" color="positive" />
           </div>
-          <h3 class="success-title">Reset Link Sent!</h3>
+          <h3 class="success-title">Request Received</h3>
           <p class="success-message">
-            We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
+            If the account exists, password-reset instructions will be sent to the email address on file. Please check your inbox and follow the instructions.
           </p>
         </q-card-section>
 

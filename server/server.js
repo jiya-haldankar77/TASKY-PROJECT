@@ -2,6 +2,7 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { dbConfig } from './db.config.js';
 import { generateToken, authenticateToken, requireRole } from './middleware/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -23,6 +24,14 @@ app.use(express.json());
 // Database connection pool
 const pool = mysql.createPool(dbConfig);
 
+const PASSWORD_RESET_TTL_MINUTES = 30;
+const normalizeEmail = (value) => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const validPassword = (value) => typeof value === 'string' && value.length >= 8;
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+const requestError = (status, message) => Object.assign(new Error(message), { status });
+const duplicateMessage = (error) => error?.code === 'ER_DUP_ENTRY';
+
 // Test database connection
 pool.getConnection()
   .then(async (connection) => {
@@ -39,6 +48,16 @@ pool.getConnection()
       console.log('Added resources_needed column to task table');
     } catch (e) {
       // Ignore error if column already exists
+    }
+    try {
+      await connection.query('ALTER TABLE user ADD COLUMN password_reset_token_hash CHAR(64) NULL;');
+    } catch (e) {
+      // Column already exists on upgraded databases.
+    }
+    try {
+      await connection.query('ALTER TABLE user ADD COLUMN password_reset_expires_at DATETIME NULL;');
+    } catch (e) {
+      // Columns already exist on upgraded databases.
     }
     connection.release();
   })
@@ -103,13 +122,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    // Verify password (using bcrypt for hashed passwords, or plain text comparison for now)
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    
-    // For testing with plain text passwords (remove in production)
-    const plainTextMatch = password === user.password_hash;
-
-    if (!passwordMatch && !plainTextMatch) {
+    if (!passwordMatch) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
@@ -148,6 +162,7 @@ app.post('/api/auth/register/pm', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      await connection.beginTransaction();
       // Check if email already exists
       const [existingEmail] = await connection.execute(
         'SELECT id FROM user WHERE email = ?',
@@ -155,7 +170,7 @@ app.post('/api/auth/register/pm', async (req, res) => {
       );
 
       if (existingEmail.length > 0) {
-        return res.status(400).json({ success: false, error: 'Email already registered' });
+        throw requestError(400, 'Email already registered');
       }
 
       // Check if manager ID already exists
@@ -165,34 +180,31 @@ app.post('/api/auth/register/pm', async (req, res) => {
       );
 
       if (existingId.length > 0) {
-        return res.status(400).json({ success: false, error: 'Manager ID already exists' });
+        throw requestError(400, 'Manager ID already exists');
       }
 
       let orgId;
       let roleId;
+      let inviteId = null;
 
       if (inviteCode) {
         // Validate invite code against database
         const [codeRows] = await connection.execute(
-          'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
+          'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW() FOR UPDATE',
           [inviteCode]
         );
 
         if (codeRows.length === 0) {
-          return res.status(400).json({ success: false, error: 'Invalid or expired invite code' });
+          throw requestError(400, 'Invalid or expired invite code');
         }
         
         const inviteData = codeRows[0];
+        inviteId = inviteData.id;
         if (inviteData.max_uses > 0 && inviteData.current_uses >= inviteData.max_uses) {
-          return res.status(400).json({ success: false, error: 'Invite code usage limit reached' });
+          throw requestError(400, 'Invite code usage limit reached');
         }
 
         // Increment invite code usage
-        await connection.execute(
-          'UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ?',
-          [inviteData.id]
-        );
-
         orgId = inviteData.org_id;
 
         // Get manager role ID for this org
@@ -202,7 +214,7 @@ app.post('/api/auth/register/pm', async (req, res) => {
         );
 
         if (roleRows.length === 0) {
-          return res.status(400).json({ success: false, error: 'Manager role not found for this organization' });
+          throw requestError(400, 'Manager role not found for this organization');
         }
         roleId = roleRows[0].id;
       } else {
@@ -256,6 +268,12 @@ app.post('/api/auth/register/pm', async (req, res) => {
         [orgId, roleId, managerId, firstName, surname, email, phone, hashedPassword, 'project_manager']
       );
 
+      if (inviteId) {
+        const [usage] = await connection.execute('UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ? AND (max_uses = 0 OR current_uses < max_uses)', [inviteId]);
+        if (usage.affectedRows !== 1) throw requestError(400, 'Invite code usage limit reached');
+      }
+      await connection.commit();
+
       const newUser = await getUserById(result.insertId);
 
       const { password_hash, ...userWithoutPassword } = newUser;
@@ -275,12 +293,15 @@ app.post('/api/auth/register/pm', async (req, res) => {
           avatar: userWithoutPassword.avatar || `https://i.pravatar.cc/150?img=${userWithoutPassword.id}`
         }
       });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
     } finally {
       connection.release();
     }
   } catch (error) {
     console.error('Register PM error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    res.status(error.status || (duplicateMessage(error) ? 409 : 500)).json({ success: false, error: error.status ? error.message : duplicateMessage(error) ? 'Email or manager ID already exists' : 'Server error' });
   }
 });
 
@@ -289,15 +310,12 @@ app.post('/api/auth/register/employee', async (req, res) => {
   try {
     const { firstName, surname, email, phone, employeeId, professionalRole, professionalRoleOther, inviteCode, password } = req.body;
 
-    console.log('Registration request received:', { firstName, surname, email, professionalRole, professionalRoleOther });
-
     if (!firstName || !surname || !email || !employeeId || !professionalRole || !inviteCode || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
     // Validate professional role
     const validProfessionalRoles = ['developer', 'designer', 'qa_engineer', 'business_analyst', 'other'];
-    console.log('Validating professional role:', professionalRole, 'against:', validProfessionalRoles);
     if (!validProfessionalRoles.includes(professionalRole)) {
       return res.status(400).json({ success: false, error: 'Invalid professional role' });
     }
@@ -309,30 +327,23 @@ app.post('/api/auth/register/employee', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      await connection.beginTransaction();
       // Validate invite code against database
       const [codeRows] = await connection.execute(
-        'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW()',
+        'SELECT id, org_id, current_uses, max_uses FROM invite_code WHERE code = ? AND is_active = 1 AND expires_at > NOW() FOR UPDATE',
         [inviteCode]
       );
 
       if (codeRows.length === 0) {
-        connection.release();
-        return res.status(400).json({ success: false, error: 'Invalid or expired invite code' });
+        throw requestError(400, 'Invalid or expired invite code');
       }
       
       const inviteData = codeRows[0];
       const orgId = inviteData.org_id;
 
       if (inviteData.max_uses > 0 && inviteData.current_uses >= inviteData.max_uses) {
-        connection.release();
-        return res.status(400).json({ success: false, error: 'Invite code usage limit reached' });
+        throw requestError(400, 'Invite code usage limit reached');
       }
-
-      // Increment invite code usage
-      await connection.execute(
-        'UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ?',
-        [inviteData.id]
-      );
 
       // Check if email already exists
       const [existingEmail] = await connection.execute(
@@ -341,7 +352,7 @@ app.post('/api/auth/register/employee', async (req, res) => {
       );
 
       if (existingEmail.length > 0) {
-        return res.status(400).json({ success: false, error: 'Email already registered' });
+        throw requestError(400, 'Email already registered');
       }
 
       // Check if employee ID already exists
@@ -351,7 +362,7 @@ app.post('/api/auth/register/employee', async (req, res) => {
       );
 
       if (existingId.length > 0) {
-        return res.status(400).json({ success: false, error: 'Employee ID already exists' });
+        throw requestError(400, 'Employee ID already exists');
       }
 
       // Get employee role ID (role_id for employee access level)
@@ -361,7 +372,7 @@ app.post('/api/auth/register/employee', async (req, res) => {
       );
 
       if (roleRows.length === 0) {
-        return res.status(400).json({ success: false, error: 'Employee role not found' });
+        throw requestError(400, 'Employee role not found');
       }
 
       const roleId = roleRows[0].id;
@@ -374,6 +385,10 @@ app.post('/api/auth/register/employee', async (req, res) => {
         'INSERT INTO user (org_id, role_id, employee_code, first_name, last_name, email, phone, password_hash, professional_role, professional_role_other, application_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [orgId, roleId, employeeId, firstName, surname, email, phone, hashedPassword, professionalRole, professionalRoleOther || null, 'employee']
       );
+
+      const [usage] = await connection.execute('UPDATE invite_code SET current_uses = current_uses + 1 WHERE id = ? AND (max_uses = 0 OR current_uses < max_uses)', [inviteData.id]);
+      if (usage.affectedRows !== 1) throw requestError(400, 'Invite code usage limit reached');
+      await connection.commit();
 
       const newUser = await getUserById(result.insertId);
 
@@ -396,32 +411,43 @@ app.post('/api/auth/register/employee', async (req, res) => {
           avatar: userWithoutPassword.avatar || `https://i.pravatar.cc/150?img=${userWithoutPassword.id}`
         }
       });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
     } finally {
       connection.release();
     }
   } catch (error) {
     console.error('Register Employee error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    res.status(error.status || (duplicateMessage(error) ? 409 : 500)).json({ success: false, error: error.status ? error.message : duplicateMessage(error) ? 'Email or employee ID already exists' : 'Server error' });
   }
 });
 
 // Forgot password endpoint
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
-    const { role, identifier, email } = req.body;
+    const { identifier, email } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!identifier || !email) {
+    if (!identifier || !validEmail(normalizedEmail)) {
       return res.status(400).json({ success: false, error: 'Identifier and email are required' });
     }
 
     const user = await getUserByIdentifier(identifier);
 
-    if (!user || user.email !== email) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    if (user && normalizeEmail(user.email) === normalizedEmail) {
+      const resetToken = crypto.randomBytes(32).toString('base64url');
+      const tokenHash = hashResetToken(resetToken);
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute(`UPDATE user SET password_reset_token_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL ${PASSWORD_RESET_TTL_MINUTES} MINUTE) WHERE id = ?`, [tokenHash, user.id]);
+      } finally {
+        connection.release();
+      }
+      // Email delivery is intentionally not attempted: no mail service exists in this project.
     }
 
-    // In production, send email with reset link
-    res.json({ success: true, message: 'Reset link sent to your email' });
+    res.json({ success: true, message: 'If the account exists, a reset link will be sent shortly' });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
@@ -431,13 +457,33 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 // Reset password endpoint
 app.post('/api/auth/reset-password', async (req, res) => {
   try {
-    const { newPassword } = req.body;
+    const { token, newPassword } = req.body;
 
-    if (!newPassword) {
+    if (!token || !validPassword(newPassword)) {
       return res.status(400).json({ success: false, error: 'New password is required' });
     }
 
-    // In production, verify token and update password
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [users] = await connection.execute('SELECT id FROM user WHERE password_reset_token_hash = ? AND password_reset_expires_at > NOW() FOR UPDATE', [hashResetToken(token)]);
+      if (users.length !== 1) {
+        await connection.rollback();
+        return res.status(400).json({ success: false, error: 'Invalid or expired reset token' });
+      }
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      const [result] = await connection.execute('UPDATE user SET password_hash = ?, password_reset_token_hash = NULL, password_reset_expires_at = NULL WHERE id = ?', [passwordHash, users[0].id]);
+      if (result.affectedRows !== 1) {
+        await connection.rollback();
+        return res.status(500).json({ success: false, error: 'Password reset failed' });
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -446,16 +492,26 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 // Update user profile endpoint
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const userId = req.params.id;
+    if (!/^\d+$/.test(userId) || Number(userId) !== Number(req.user.id)) {
+      return res.status(403).json({ success: false, error: 'You may only update your own profile' });
+    }
     const { firstName, surname, email, phone, avatar } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    if (!firstName?.trim() || !surname?.trim() || !validEmail(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: 'Valid first name, surname, and email are required' });
+    }
+    if (phone != null && (typeof phone !== 'string' || phone.length > 20) || avatar != null && (typeof avatar !== 'string' || avatar.length > 512)) {
+      return res.status(400).json({ success: false, error: 'Invalid profile field' });
+    }
     
     const connection = await pool.getConnection();
     try {
       await connection.execute(
         'UPDATE user SET first_name = ?, last_name = ?, email = ?, phone = ?, avatar = ? WHERE id = ?',
-        [firstName, surname, email, phone, avatar || null, userId]
+        [firstName.trim(), surname.trim(), normalizedEmail, phone?.trim() || null, avatar || null, userId]
       );
       
       // Fetch the updated user
@@ -486,16 +542,17 @@ app.put('/api/users/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    res.status(duplicateMessage(error) ? 409 : 500).json({ success: false, error: duplicateMessage(error) ? 'Email already registered' : 'Server error' });
   }
 });
 // Get all users endpoint (for testing)
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', authenticateToken, requireRole('pm'), async (req, res) => {
   try {
     const connection = await pool.getConnection();
     try {
       const [rows] = await connection.execute(
-        'SELECT u.id, u.employee_code, u.first_name, u.last_name, u.email, u.phone, r.name as role_name, r.access_level FROM user u JOIN role r ON u.role_id = r.id'
+        'SELECT u.id, u.employee_code, u.first_name, u.last_name, u.email, u.phone, u.avatar, r.name as role_name, r.access_level FROM user u JOIN role r ON u.role_id = r.id WHERE u.org_id = ?',
+        [req.user.org_id]
       );
       res.json({ success: true, users: rows });
     } finally {
@@ -516,6 +573,7 @@ app.use('/api/pm/resources', resourceRoutes(pool));
 app.use('/api/pm/analytics', analyticsRoutes(pool));
 app.use('/api/pm/org', organisationRoutes(pool));
 app.use('/api/pm/notifications', notificationRoutes(pool));
+app.use('/api/notifications', authenticateToken, notificationRoutes(pool));
 app.use('/api/pm/calendar', calendarRoutes(pool));
 app.use('/api/pm/schedule', schedulingRoutes(pool));
 
