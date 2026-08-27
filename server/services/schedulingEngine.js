@@ -288,18 +288,14 @@ export async function runGlobalAutoScheduler(pool, orgId) {
   return { success: true, assignedCount };
 }
 
-/**
- * Rebalance Workloads:
- * 1. Find overloaded resources (> 100% capacity)
- * 2. Unassign their lowest priority or not-started tasks until they are under 100%
- * 3. Trigger runGlobalAutoScheduler to reassign these tasks to free resources
- */
 export async function rebalanceWorkloads(pool, orgId) {
   let tasksUnassigned = 0;
   
   // 1. Get overloaded resources (utilization > 100%)
   const resources = await getOrgResourceWorkloads(pool, orgId);
   const overloaded = resources.filter(r => r.utilization > 100);
+  
+  const unassignedTasks = [];
   
   for (const resource of overloaded) {
     // Current hours for this resource
@@ -308,7 +304,7 @@ export async function rebalanceWorkloads(pool, orgId) {
     
     // Get their active tasks, sorted by priority (low first) and progress (low first)
     const [tasks] = await pool.execute(`
-      SELECT t.id, t.expected_effort, t.progress, ta.id as assignment_id,
+      SELECT t.id, t.expected_effort, t.progress, t.priority, t.deadline, t.created_by, ta.id as assignment_id,
              (SELECT COUNT(*) FROM task_assignment WHERE task_id = t.id AND is_active = 1) as active_assignee_count
       FROM task t
       JOIN task_assignment ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.is_active = 1
@@ -320,9 +316,13 @@ export async function rebalanceWorkloads(pool, orgId) {
     for (const task of tasks) {
       if (currentHours <= maxHours) break;
       
+      if (task.priority === 'critical') continue;
+      
       const assignees = task.active_assignee_count || 1;
       const taskRemainingHours = ((task.expected_effort * (100 - task.progress)) / 100) / assignees;
-      const weeksRemaining = Math.max(1, (new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7));
+      
+      const deadlineDate = task.deadline ? new Date(task.deadline) : new Date();
+      const weeksRemaining = Math.max(1, (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7));
       const weeklyRequiredForTask = taskRemainingHours / weeksRemaining;
       
       // Prevent ER_DUP_ENTRY by deleting any existing inactive assignment for this task and user
@@ -339,14 +339,22 @@ export async function rebalanceWorkloads(pool, orgId) {
       
       currentHours -= weeklyRequiredForTask;
       tasksUnassigned++;
+      unassignedTasks.push(task);
     }
   }
   
-  // 3. Re-allocate unassigned tasks globally
+  // 3. Re-allocate unassigned tasks iteratively
   let assignedCount = 0;
-  if (tasksUnassigned > 0) {
-    const result = await runGlobalAutoScheduler(pool, orgId);
-    assignedCount = result.assignedCount;
+  for (const task of unassignedTasks) {
+    const recommendations = await recommendResources(pool, orgId, task.id);
+    if (recommendations.length > 0) {
+      const best = recommendations[0];
+      await pool.execute(
+        'INSERT INTO task_assignment (task_id, user_id, assigned_by) VALUES (?, ?, ?)',
+        [task.id, best.user_id, task.created_by || 1]
+      );
+      assignedCount++;
+    }
   }
   
   return { success: true, tasksUnassigned, assignedCount };
