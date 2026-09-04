@@ -1,569 +1,197 @@
 <template>
-  <q-page
-    class="q-pa-md text-black flex column"
-    style="background-color: #f8f9fa; height: 100vh; max-height: 100vh; min-height: 0 !important"
-  >
-    <!-- Header -->
-    <div class="row items-start justify-between q-mb-md" style="flex: 0 0 auto">
+  <q-page class="q-pa-md calendar-page">
+    <div class="row items-center justify-between q-mb-md">
       <div class="row items-center">
         <q-avatar
           color="indigo-1"
           text-color="indigo"
-          icon="o_calendar_view_week"
+          icon="timeline"
           size="48px"
           class="q-mr-md"
           style="border-radius: 12px"
         />
         <div class="column">
-          <div class="text-h5 text-weight-bold">Project Gantt Chart</div>
+          <div class="text-h5 text-weight-bold">Project Timeline</div>
           <div class="text-grey-7 text-caption">
-            Visualize project timeline, tasks, and resource assignments
+            Plan schedules, track progress, and manage dependencies across your workspace
           </div>
         </div>
       </div>
-      <div class="row items-center q-gutter-sm">
-        <q-select
-          v-model="selectedProject"
-          :options="projects"
-          option-label="name"
+
+      <div class="row items-center q-gutter-md">
+        <q-input
+          v-model="searchQuery"
           outlined
           dense
+          rounded
           bg-color="white"
-          label="Select Project"
-          style="width: 250px"
-          @update:model-value="loadProjectData"
-          :loading="loadingProjects"
-        />
+          placeholder="Search tasks..."
+          style="width: 260px"
+        >
+          <template #prepend><q-icon name="search" /></template>
+        </q-input>
+        <q-avatar size="36px" class="cursor-pointer">
+          <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
+          <q-menu anchor="bottom right" self="top right">
+            <q-list style="min-width: 150px">
+              <q-item clickable v-close-popup to="/dashboard/profile">
+                <q-item-section avatar><q-icon name="person" /></q-item-section>
+                <q-item-section>Profile</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup @click="logout">
+                <q-item-section avatar><q-icon name="logout" color="red" /></q-item-section>
+                <q-item-section class="text-red">Logout</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-avatar>
       </div>
     </div>
 
-    <!-- Project Summary -->
-    <div v-if="selectedProject && projectSummary" class="bg-white q-pa-md shadow-1 q-mb-md rounded-borders" style="flex: 0 0 auto">
-      <div class="row items-center q-mb-md">
-        <div class="text-h6 text-weight-bold">{{ selectedProject.name }}</div>
-        <q-space />
-        <q-badge :color="selectedProject.status === 'active' ? 'green' : 'grey'" :label="selectedProject.status" />
-      </div>
-      <div class="text-caption text-grey-7 q-mb-md">{{ selectedProject.description || 'No description' }}</div>
-      <div class="row q-col-gutter-md">
-        <div class="col">
-          <div class="text-caption text-grey-7">Progress</div>
-          <div class="text-subtitle1 text-weight-bold">{{ projectSummary.progress }}%</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Start Date</div>
-          <div class="text-subtitle1 text-weight-bold">{{ formatDate(selectedProject.start_date) }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Deadline</div>
-          <div class="text-subtitle1 text-weight-bold">{{ formatDate(selectedProject.end_date) }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Total Tasks</div>
-          <div class="text-subtitle1 text-weight-bold">{{ projectSummary.totalTasks }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Completed</div>
-          <div class="text-subtitle1 text-weight-bold text-green">{{ projectSummary.completedTasks }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">In Progress</div>
-          <div class="text-subtitle1 text-weight-bold text-blue">{{ projectSummary.inProgressTasks }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Pending</div>
-          <div class="text-subtitle1 text-weight-bold text-grey">{{ projectSummary.pendingTasks }}</div>
-        </div>
-        <div class="col">
-          <div class="text-caption text-grey-7">Team Size</div>
-          <div class="text-subtitle1 text-weight-bold">{{ projectSummary.teamSize }}</div>
-        </div>
+    <div class="row q-col-gutter-md q-mb-md">
+      <div v-for="item in prioritySummary" :key="item.key" class="col-3">
+        <q-card flat bordered class="priority-card bg-white">
+          <q-card-section class="row items-center q-pa-md">
+            <q-avatar :color="item.color + '-1'" :text-color="item.color" :icon="item.icon" size="40px" class="q-mr-sm" />
+            <div>
+              <div class="text-caption text-grey-7">{{ item.label }}</div>
+              <div class="text-h6 text-weight-bold" :class="`text-${item.color}`">{{ item.count }}</div>
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div
-      class="bg-white q-pa-md shadow-1"
-      style="
-        border-radius: 12px;
-        flex: 1 1 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      "
-    >
-      <!-- Toolbar -->
-      <div class="row items-center justify-between q-mb-md" style="flex: 0 0 auto">
-        <div class="row items-center q-gutter-x-sm">
-          <q-btn
-            flat
-            round
-            dense
-            icon="chevron_left"
-            color="grey-8"
-            aria-label="Previous month"
-            @click="changeMonth(-1)"
+    <q-card flat bordered class="filter-card timeline-toolbar-card q-pa-md q-mb-md">
+      <div class="row items-center justify-between q-gutter-md">
+        <div class="row items-center q-gutter-sm">
+          <span class="text-caption text-grey-7 text-weight-medium">View</span>
+          <q-btn-toggle
+            v-model="scale"
+            unelevated
+            no-caps
+            toggle-color="indigo-5"
+            color="white"
+            text-color="grey-8"
+            :options="scaleOptions"
           />
-          <div class="text-subtitle1 text-weight-bold q-px-sm">{{ monthLabel }}</div>
-          <q-btn
-            flat
-            round
-            dense
-            icon="chevron_right"
-            color="grey-8"
-            aria-label="Next month"
-            @click="changeMonth(1)"
+          <q-btn-toggle
+            v-model="groupByProject"
+            unelevated
+            no-caps
+            toggle-color="indigo-5"
+            color="white"
+            text-color="grey-8"
+            :options="hierarchyOptions"
           />
-        </div>
-
-        <div class="row items-center q-gutter-x-sm">
-          <q-badge
-            color="blue-1"
-            text-color="blue"
-            label="Task Deadline"
-            class="q-pa-xs rounded-borders"
-          />
-          <q-badge
-            color="orange-1"
-            text-color="orange"
-            label="Milestone"
-            class="q-pa-xs rounded-borders"
-          />
-          <q-badge
-            color="green-1"
-            text-color="green"
-            label="Available"
-            class="q-pa-xs rounded-borders"
-          />
-          <q-badge color="red-1" text-color="red" label="Leave" class="q-pa-xs rounded-borders" />
         </div>
       </div>
-
-      <!-- Loading -->
-      <div v-if="calendarStore.loading" class="flex flex-center full-height full-width">
-        <q-spinner-dots size="40px" color="primary" />
-      </div>
-
-      <!-- Resource timeline -->
-      <div class="resource-timeline" style="flex: 1 1 0">
-        <div class="timeline-head">
-          <div class="resource-col text-caption text-grey-7 text-weight-bold">RESOURCE</div>
-          <div
-            class="days-col"
-            :style="{ gridTemplateColumns: `repeat(${monthDays.length}, minmax(28px, 1fr))` }"
-          >
-            <div
-              v-for="day in monthDays"
-              :key="day.key"
-              class="day-label"
-              :class="{ 'today-label': day.isToday }"
-            >
-              {{ day.label }}
-            </div>
-          </div>
-          <div class="completion-col text-caption text-grey-7 text-weight-bold">COMPLETE</div>
-        </div>
-
-        <div v-if="resourceRows.length === 0" class="empty-timeline">
-          <q-icon name="view_timeline" size="48px" color="grey-4" />
-          <div class="text-subtitle1 text-grey-7 q-mt-sm">
-            {{ selectedProject ? `No tasks assigned to ${selectedProject.name}.` : 'Please select a project to view its timeline.' }}
-          </div>
-        </div>
-        <div v-for="row in resourceRows" :key="row.id" class="timeline-row">
-          <div class="resource-col resource-name">
-            <q-avatar
-              size="30px"
-              color="indigo-1"
-              text-color="indigo"
-              :src="row.avatar || undefined"
-              >{{ row.initials }}</q-avatar
-            >
-            <div class="ellipsis q-ml-sm">{{ row.name }}</div>
-          </div>
-          <div
-            class="days-col task-track"
-            :style="{ gridTemplateColumns: `repeat(${monthDays.length}, minmax(28px, 1fr))` }"
-          >
-            <div
-              v-for="day in monthDays"
-              :key="day.key"
-              class="day-cell"
-              :class="{ 'today-cell': day.isToday }"
-            />
-            <q-tooltip v-if="row.tasks.length">{{
-              row.tasks.map((task: any) => task.title).join(' • ')
-            }}</q-tooltip>
-            <div
-              v-for="task in row.tasks"
-              :key="task.id"
-              class="task-bar cursor-pointer"
-              :style="task.style"
-              :class="`task-${task.status}`"
-              @click="openTaskDetail(task)"
-            >
-              <span class="task-title">{{ task.title }}</span>
-              <span class="task-progress">{{ task.progress }}%</span>
-            </div>
-          </div>
-          <div class="completion-col completion-value" :class="completionClass(row.completion)">
-            {{ row.completion }}%
-          </div>
-        </div>
-      </div>
-    </div>
-  </q-page>
-  <CreateTaskDialog v-model="showCreateDialog" @saved="refreshCalendar" />
-  
-  <!-- Task Detail Dialog -->
-  <q-dialog v-model="showTaskDetailDialog">
-    <q-card style="width: 500px; max-width: 90vw; border-radius: 12px">
-      <q-card-section class="bg-indigo-1 text-indigo-9">
-        <div class="text-h6 text-weight-bold">Task Details</div>
-      </q-card-section>
-      <q-card-section class="q-pt-none">
-        <div v-if="selectedTask">
-          <div class="text-subtitle1 text-weight-bold q-mb-sm">{{ selectedTask.title }}</div>
-          <div class="text-caption text-grey-7 q-mb-md">Project: {{ selectedTask.project_name }}</div>
-          <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Status</div>
-              <div>{{ selectedTask.status }}</div>
-            </div>
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Priority</div>
-              <div>{{ selectedTask.priority }}</div>
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Progress</div>
-              <div>{{ selectedTask.progress }}%</div>
-            </div>
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Estimated Effort</div>
-              <div>{{ selectedTask.expected_effort }}h</div>
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Start Date</div>
-              <div>{{ formatDate(selectedTask.start_date || selectedTask.start) }}</div>
-            </div>
-            <div class="col-6">
-              <div class="text-caption text-grey-7">Deadline</div>
-              <div>{{ formatDate(selectedTask.deadline || selectedTask.end) }}</div>
-            </div>
-          </div>
-        </div>
-      </q-card-section>
-      <q-card-actions align="right">
-        <q-btn flat label="Close" color="primary" v-close-popup />
-      </q-card-actions>
     </q-card>
-  </q-dialog>
+
+    <DhtmlxGanttTimeline
+      v-model:search-query="searchQuery"
+      v-model:scale="scale"
+      v-model:group-by-project="groupByProject"
+      v-model:show-extra-columns="showExtraColumns"
+      v-model:show-dependencies="showDependencies"
+      :tasks="timelineTasks"
+      :projects="timelineProjects"
+      :resources="timelineResources"
+      title="Project Timeline"
+      @task-click="openTask"
+    />
+  </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useCalendarStore } from '../stores/calendarStore';
-import CreateTaskDialog from '../components/CreateTaskDialog.vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/authStore';
+import DhtmlxGanttTimeline from '../components/DhtmlxGanttTimeline.vue';
+import { usePmTaskStore } from '../stores/pmTaskStore';
+import { useProjectStore } from '../stores/projectStore';
+import { useResourceStore } from '../stores/resourceStore';
 
-const calendarStore = useCalendarStore();
-const showCreateDialog = ref(false);
-const selectedProject = ref<any>(null);
-const projects = ref<any[]>([]);
-const projectSummary = ref<any>(null);
-const loadingProjects = ref(false);
-const currentDate = ref(new Date());
-const selectedTask = ref<any>(null);
-const showTaskDetailDialog = ref(false);
+const router = useRouter();
+const authStore = useAuthStore();
+const pmTaskStore = usePmTaskStore();
+const projectStore = useProjectStore();
+const resourceStore = useResourceStore();
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return 'N/A';
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return 'N/A';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
+const searchQuery = ref('');
+const scale = ref<'hour' | 'day' | 'week' | 'month'>('week');
+const groupByProject = ref(true);
+const showExtraColumns = ref(false);
+const showDependencies = ref(true);
 
-const openTaskDetail = (task: any) => {
-  selectedTask.value = task;
-  showTaskDetailDialog.value = true;
-};
+const scaleOptions = [
+  { label: 'Hour', value: 'hour' },
+  { label: 'Day', value: 'day' },
+  { label: 'Week', value: 'week' },
+  { label: 'Month', value: 'month' },
+];
+const hierarchyOptions = [
+  { label: 'Projects', value: true },
+  { label: 'Flat', value: false },
+];
 
-const fetchProjects = async () => {
-  loadingProjects.value = true;
-  try {
-    const response = await fetch('http://localhost:3001/api/pm/projects', {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await response.json();
-    if (data.success) {
-      projects.value = data.projects;
-    }
-  } catch (error) {
-    console.error('Failed to fetch projects:', error);
-  } finally {
-    loadingProjects.value = false;
-  }
-};
+const prioritySummary = computed(() => [
+  { key: 'critical', label: 'Critical', color: 'red', icon: 'priority_high', count: pmTaskStore.tasks.filter((t: any) => t.priority === 'critical').length },
+  { key: 'high', label: 'High', color: 'orange', icon: 'flag', count: pmTaskStore.tasks.filter((t: any) => t.priority === 'high').length },
+  { key: 'medium', label: 'Medium', color: 'yellow', icon: 'remove', count: pmTaskStore.tasks.filter((t: any) => t.priority === 'medium').length },
+  { key: 'low', label: 'Low', color: 'green', icon: 'arrow_downward', count: pmTaskStore.tasks.filter((t: any) => t.priority === 'low').length },
+]);
 
-const loadProjectData = async (project: any) => {
-  if (!project) {
-    projectSummary.value = null;
-    calendarStore.events = [];
-    return;
-  }
-  const projectId = project.id;
-  try {
-    const response = await fetch(`http://localhost:3001/api/pm/projects/${projectId}`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await response.json();
-    if (data.success) {
-      projectSummary.value = {
-        progress: Math.round(data.project.progress || 0),
-        totalTasks: data.project.total_tasks || 0,
-        completedTasks: data.project.completed_tasks || 0,
-        inProgressTasks: data.project.in_progress_tasks || 0,
-        pendingTasks: data.project.pending_tasks || 0,
-        teamSize: data.project.team_size || 0,
-      };
-      // Use current month for calendar display
-      await calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(monthEnd.value), projectId);
-    }
-  } catch (error) {
-    console.error('Failed to load project data:', error);
-  }
-};
+const timelineTasks = computed(() => pmTaskStore.tasks.map((task: any) => ({
+  ...task,
+  task_id: task.task_id ?? task.id,
+  project_id: task.project_id ?? task.projectId,
+})));
+const timelineProjects = computed(() => projectStore.projects.map((project: any) => ({
+  ...project,
+  project_id: project.project_id ?? project.id,
+})));
+const timelineResources = computed(() => resourceStore.resources.map((resource: any) => ({
+  ...resource,
+  user_id: resource.user_id ?? resource.id,
+  name: resource.name ?? `${resource.first_name || ''} ${resource.last_name || ''}`.trim(),
+})));
 
-const monthStart = computed(
-  () => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1),
-);
-const monthEnd = computed(
-  () => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0),
-);
-const monthLabel = computed(() =>
-  currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-);
-const toApiDate = (value: Date) =>
-  `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
-const refreshCalendar = () =>
-  calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(monthEnd.value));
-const changeMonth = (offset: number) => {
-  currentDate.value = new Date(
-    currentDate.value.getFullYear(),
-    currentDate.value.getMonth() + offset,
-    1,
-  );
-  // Refresh with project filter if a project is selected
-  if (selectedProject.value) {
-    calendarStore.fetchCalendarData(toApiDate(monthStart.value), toApiDate(monthEnd.value), selectedProject.value.id);
-  }
-};
 onMounted(() => {
-  fetchProjects();
-  // Don't load calendar data initially - wait for project selection
+  void Promise.all([pmTaskStore.fetchTasks(), projectStore.fetchProjects(), resourceStore.fetchResources()]);
 });
 
-const monthDays = computed(() =>
-  Array.from({ length: monthEnd.value.getDate() }, (_, index) => {
-    const current = new Date(
-      monthStart.value.getFullYear(),
-      monthStart.value.getMonth(),
-      index + 1,
-    );
-    return {
-      key: current.toISOString().slice(0, 10),
-      label: current.getDate(),
-      isToday: current.toDateString() === new Date().toDateString(),
-    };
-  }),
-);
-
-const resourceRows = computed(() => {
-  const rows = new Map<string, any>();
-  const tasks = calendarStore.events.filter((event) => event.type === 'task');
-
-  // Add tasks to their respective rows
-  tasks.forEach((event) => {
-    const assignees = event.assignees?.length
-      ? event.assignees
-      : [{ id: 'unassigned', name: 'Unassigned', avatar: null }];
-    assignees.forEach((assignee: any) => {
-      const id = String(assignee.id);
-      if (!rows.has(id)) {
-        rows.set(id, {
-          id,
-          name: assignee.name,
-          avatar: assignee.avatar,
-          initials: assignee.name
-            .split(' ')
-            .map((part: string) => part[0])
-            .join('')
-            .slice(0, 2),
-          tasks: [],
-        });
-      }
-      const start = new Date(event.start);
-      const end = new Date(event.end || event.start);
-      const startDay = Math.max(1, start < monthStart.value ? 1 : start.getDate());
-      const endDay = Math.min(
-        monthEnd.value.getDate(),
-        end > monthEnd.value ? monthEnd.value.getDate() : end.getDate(),
-      );
-      const left = ((startDay - 1) / monthDays.value.length) * 100;
-      const width = Math.max(
-        (Math.max(1, endDay - startDay + 1) / monthDays.value.length) * 100,
-        3,
-      );
-      rows.get(id).tasks.push({
-        id: event.id,
-        title: event.title,
-        status: event.status,
-        priority: event.priority,
-        progress: event.progress || 0,
-        expected_effort: event.expected_effort || 0,
-        project_name: event.project_name,
-        project_color: event.project_color,
-        style: { left: `${left}%`, width: `${width}%` },
-      });
-    });
-  });
-
-  return [...rows.values()]
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((row) => ({
-      ...row,
-      completion: row.tasks.length
-        ? Math.round(
-            row.tasks.reduce((total: number, task: any) => total + task.progress, 0) /
-              row.tasks.length,
-          )
-        : 0,
-    }));
-});
-
-const completionClass = (completion: number) =>
-  completion >= 100 ? 'text-positive' : completion >= 60 ? 'text-indigo' : 'text-orange';
+const logout = () => {
+  authStore.logout();
+  router.push('/auth/login');
+};
+const openTask = (task: any) => {
+  if (task?.id) router.push(`/dashboard/tasks?open=${task.id}`);
+};
 </script>
 
 <style scoped>
-.border-grey-3 {
-  border: 1px solid #e0e0e0;
-}
-.resource-timeline {
+.calendar-page {
+  min-height: 100%;
+  background-color: #f8f9fa;
   overflow: auto;
-  border: 1px solid #edf0f5;
-  border-radius: 10px;
-  min-width: 760px;
 }
-.timeline-head,
-.timeline-row {
-  display: grid;
-  grid-template-columns: 190px minmax(420px, 1fr) 78px;
-  align-items: center;
+
+.priority-card,
+.filter-card {
+  border-radius: 12px;
+  border-color: #e5e7eb;
 }
-.timeline-head {
-  min-height: 42px;
-  background: #f7f8fb;
-  border-bottom: 1px solid #e8ebf0;
-  position: sticky;
-  top: 0;
-  z-index: 2;
+
+.timeline-toolbar-card {
+  background: #f8f9ff;
+  border-color: #e7e9f4;
 }
-.timeline-row {
-  min-height: 64px;
-  border-bottom: 1px solid #f0f2f5;
-}
-.resource-col,
-.completion-col {
-  padding: 0 14px;
-}
-.resource-name {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  font-weight: 600;
-  color: #3b4658;
-}
-.days-col {
-  display: grid;
-  height: 100%;
-  position: relative;
-}
-.day-label {
-  text-align: center;
-  padding-top: 13px;
-  font-size: 11px;
-  color: #8c98aa;
-}
-.today-label {
-  color: #4f46e5;
-  font-weight: 700;
-}
-.task-track {
-  min-height: 64px;
-  align-items: center;
-}
-.day-cell {
-  height: 100%;
-  border-left: 1px solid #f1f3f6;
-  grid-row: 1;
-}
-.today-cell {
-  background: #f2f2ff;
-}
-.task-bar {
-  position: absolute;
-  z-index: 1;
-  top: 21px;
-  height: 23px;
-  border-radius: 6px;
-  padding: 3px 7px;
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  align-items: center;
-  color: white;
-  font-size: 11px;
+
+.timeline-toolbar-card :deep(.q-btn-group) {
   overflow: hidden;
-  box-shadow: 0 2px 5px #263e7a25;
-}
-.task-not-started {
-  background: #64748b;
-}
-.task-in-progress {
-  background: #4f46e5;
-}
-.task-in-review {
-  background: #8b5cf6;
-}
-.task-completed {
-  background: #16a34a;
-}
-.task-blocked {
-  background: #dc2626;
-}
-.task-title,
-.task-progress {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.task-progress {
-  font-weight: 700;
-}
-.completion-value {
-  font-weight: 700;
-  font-size: 13px;
-}
-.empty-timeline {
-  height: 100%;
-  min-height: 220px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 </style>

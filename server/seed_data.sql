@@ -5,7 +5,7 @@
 -- Password for ALL users: password123
 -- BCrypt hash: $2b$10$DzYSU/E6cNledVHArbIeE.0k/0QjHSr9PjGIrYWyRW9wxemvhQvC6
 -- ============================================================
-
+SET SQL_SAFE_UPDATES = 0;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
