@@ -24,7 +24,9 @@
       </div>
 
       <div class="form-section">
-        <label class="form-label">{{ form.role === 'Project Manager' ? 'Manager ID' : 'Employee ID' }}</label>
+        <label class="form-label">{{
+          form.role === 'Project Manager' ? 'Manager ID' : 'Employee ID'
+        }}</label>
         <q-input
           v-model="form.id"
           outlined
@@ -50,7 +52,7 @@
           type="email"
           :rules="[
             (val: string | null) => !!val || 'Email is required',
-            (val: string | null) => val && isValidEmail(val) || 'Invalid email format'
+            (val: string | null) => (val && isValidEmail(val)) || 'Invalid email format',
           ]"
         >
           <template v-slot:prepend>
@@ -88,19 +90,15 @@
           <div class="success-icon">
             <q-icon name="check_circle" size="64px" color="positive" />
           </div>
-          <h3 class="success-title">Request Received</h3>
+          <h3 class="success-title">Reset Link Sent!</h3>
           <p class="success-message">
-            If the account exists, password-reset instructions will be sent to the email address on file. Please check your inbox and follow the instructions.
+            We've sent a password reset link to your email address. Please check your inbox and
+            follow the instructions.
           </p>
         </q-card-section>
 
         <q-card-actions align="center" class="dialog-actions">
-          <q-btn
-            label="OK"
-            color="primary"
-            @click="handleSuccessOk"
-            no-caps
-          />
+          <q-btn label="OK" color="primary" @click="handleSuccessOk" no-caps />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -108,54 +106,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const showSuccessDialog = ref(false)
+const loading = ref(false);
+const showSuccessDialog = ref(false);
 
 const form = reactive({
   role: 'Project Manager',
   id: '',
-  email: ''
-})
+  email: '',
+});
 
-const roleOptions = ['Project Manager', 'Employee']
+const roleOptions = ['Project Manager', 'Employee'];
 
 const isValidEmail = (email: string | null): boolean => {
-  if (!email) return false
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailPattern.test(email)
-}
+  if (!email) return false;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailPattern.test(email);
+};
 
 const handleSubmit = async () => {
-  loading.value = true
-  
+  loading.value = true;
+
   try {
-    const role = form.role === 'Project Manager' ? 'pm' : 'employee'
-    const result = await authStore.forgotPassword(role, form.id, form.email)
-    
+    const role = form.role === 'Project Manager' ? 'pm' : 'employee';
+    const result = await authStore.forgotPassword(role, form.id, form.email);
+
     if (result.success) {
-      showSuccessDialog.value = true
+      showSuccessDialog.value = true;
     } else {
-      alert('Failed to send reset link: ' + (result.error || 'Unknown error'))
+      alert('Failed to send reset link: ' + (result.error || 'Unknown error'));
     }
   } catch (error) {
-    console.error('Forgot password error:', error)
-    alert('An error occurred')
+    console.error('Forgot password error:', error);
+    alert('An error occurred');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSuccessOk = () => {
-  showSuccessDialog.value = false
-  void router.push('/auth/reset-password')
-}
+  showSuccessDialog.value = false;
+  void router.push('/auth/reset-password');
+};
 </script>
 
 <style scoped>
@@ -207,7 +205,7 @@ const handleSuccessOk = () => {
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
   font-weight: 600;
   font-size: 1rem;

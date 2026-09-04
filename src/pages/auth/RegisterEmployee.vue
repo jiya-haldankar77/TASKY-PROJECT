@@ -9,13 +9,7 @@
       <div class="form-row">
         <div class="form-section">
           <label class="form-label">First Name</label>
-          <q-input
-            v-model="form.firstName"
-            outlined
-            dense
-            bg-color="grey-1"
-            placeholder="John"
-          >
+          <q-input v-model="form.firstName" outlined dense bg-color="grey-1" placeholder="John">
             <template v-slot:prepend>
               <q-icon name="person" color="grey-7" />
             </template>
@@ -24,13 +18,7 @@
 
         <div class="form-section">
           <label class="form-label">Surname</label>
-          <q-input
-            v-model="form.surname"
-            outlined
-            dense
-            bg-color="grey-1"
-            placeholder="Doe"
-          >
+          <q-input v-model="form.surname" outlined dense bg-color="grey-1" placeholder="Doe">
             <template v-slot:prepend>
               <q-icon name="person_outline" color="grey-7" />
             </template>
@@ -73,13 +61,7 @@
 
       <div class="form-section">
         <label class="form-label">Employee ID</label>
-        <q-input
-          v-model="form.employeeId"
-          outlined
-          dense
-          bg-color="grey-1"
-          placeholder="EMP001"
-        >
+        <q-input v-model="form.employeeId" outlined dense bg-color="grey-1" placeholder="EMP001">
           <template v-slot:prepend>
             <q-icon name="badge" color="grey-7" />
           </template>
@@ -228,18 +210,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+import { ref, reactive, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
-const passwordStrength = ref(0)
-const inviteCodeValid = ref(false)
+const loading = ref(false);
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
+const passwordStrength = ref(0);
+const inviteCodeValid = ref(false);
 
 const form = reactive({
   firstName: '',
@@ -251,108 +233,113 @@ const form = reactive({
   professionalRoleOther: '',
   inviteCode: '',
   password: '',
-  confirmPassword: ''
-})
+  confirmPassword: '',
+});
 
-const roleOptions = [
-  'Developer',
-  'Designer',
-  'QA Engineer',
-  'Business Analyst',
-  'Other'
-]
+const roleOptions = ['Developer', 'Designer', 'QA Engineer', 'Business Analyst', 'Other'];
 
 const professionalRoleMapping: Record<string, string> = {
-  'Developer': 'developer',
-  'Designer': 'designer',
+  Developer: 'developer',
+  Designer: 'designer',
   'QA Engineer': 'qa_engineer',
   'Business Analyst': 'business_analyst',
-  'Other': 'other'
-}
+  Other: 'other',
+};
 
-const hasUpperCase = (password: string | null): boolean => password ? /[A-Z]/.test(password) : false
-const hasLowerCase = (password: string | null): boolean => password ? /[a-z]/.test(password) : false
-const hasNumber = (password: string | null): boolean => password ? /\d/.test(password) : false
-const hasSpecialChar = (password: string | null): boolean => password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false
+const hasUpperCase = (password: string | null): boolean =>
+  password ? /[A-Z]/.test(password) : false;
+const hasLowerCase = (password: string | null): boolean =>
+  password ? /[a-z]/.test(password) : false;
+const hasNumber = (password: string | null): boolean => (password ? /\d/.test(password) : false);
+const hasSpecialChar = (password: string | null): boolean =>
+  password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false;
 
 const checkPasswordStrength = () => {
-  let strength = 0
-  if (form.password.length >= 8) strength++
-  if (hasUpperCase(form.password)) strength++
-  if (hasLowerCase(form.password)) strength++
-  if (hasNumber(form.password)) strength++
-  if (hasSpecialChar(form.password)) strength++
-  passwordStrength.value = strength
-}
+  let strength = 0;
+  if (form.password.length >= 8) strength++;
+  if (hasUpperCase(form.password)) strength++;
+  if (hasLowerCase(form.password)) strength++;
+  if (hasNumber(form.password)) strength++;
+  if (hasSpecialChar(form.password)) strength++;
+  passwordStrength.value = strength;
+};
 
-const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100)
+const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100);
 
 const strengthClass = computed(() => {
-  if (passwordStrength.value <= 2) return 'weak'
-  if (passwordStrength.value <= 3) return 'medium'
-  return 'strong'
-})
+  if (passwordStrength.value <= 2) return 'weak';
+  if (passwordStrength.value <= 3) return 'medium';
+  return 'strong';
+});
 
 const strengthText = computed(() => {
-  if (passwordStrength.value <= 2) return 'Weak password'
-  if (passwordStrength.value <= 3) return 'Medium strength'
-  return 'Strong password'
-})
+  if (passwordStrength.value <= 2) return 'Weak password';
+  if (passwordStrength.value <= 3) return 'Medium strength';
+  return 'Strong password';
+});
 
 const validateInviteCode = () => {
-  inviteCodeValid.value = authStore.validateInviteCode(form.inviteCode)
-}
+  inviteCodeValid.value = authStore.validateInviteCode(form.inviteCode);
+};
 
 const handleRegister = async () => {
   // Validate professional role is selected
   if (!form.professionalRole) {
-    alert('Please select a professional role')
-    return
+    alert('Please select a professional role');
+    return;
   }
-  
+
   // Validate Other role has custom specification
   if (form.professionalRole === 'Other' && !form.professionalRoleOther.trim()) {
-    alert('Please specify your professional role')
-    return
+    alert('Please specify your professional role');
+    return;
   }
-  
+
   // Validate password match
   if (form.password !== form.confirmPassword) {
-    alert('Passwords do not match')
-    return
+    alert('Passwords do not match');
+    return;
   }
-  
-  loading.value = true
-  
+
+  loading.value = true;
+
   try {
-    const mappedRole = professionalRoleMapping[form.professionalRole] || form.professionalRole
-    console.log('Sending professional role:', mappedRole)
-    
-    const result = await authStore.registerEmployee({
-      firstName: form.firstName,
-      surname: form.surname,
-      email: form.email,
-      phone: form.phone,
-      role: 'employee',
-      professionalRole: mappedRole,
-      professionalRoleOther: form.professionalRole === 'Other' ? form.professionalRoleOther : null,
-      employeeId: form.employeeId,
-      inviteCode: form.inviteCode,
-      password: form.password
-    })
-    
+    const mappedRole = professionalRoleMapping[form.professionalRole] || form.professionalRole;
+    console.log('Sending professional role:', mappedRole);
+
+    const response = await fetch('http://localhost:3001/api/auth/register/employee', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        surname: form.surname,
+        email: form.email,
+        phone: form.phone,
+        employeeId: form.employeeId,
+        professionalRole: mappedRole,
+        professionalRoleOther:
+          form.professionalRole === 'Other' ? form.professionalRoleOther : null,
+        inviteCode: form.inviteCode,
+        password: form.password,
+      }),
+    });
+
+    const result = await response.json();
+
     if (result.success) {
-      void router.push('/auth/login')
+      void router.push('/auth/login');
     } else {
-      alert('Registration failed: ' + (result.error || 'Unknown error'))
+      alert('Registration failed: ' + (result.error || 'Unknown error'));
     }
   } catch (error) {
-    console.error('Registration error:', error)
-    alert('Error: ' + String(error))
+    console.error('Registration error:', error);
+    alert('Error: ' + String(error));
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
@@ -461,7 +448,7 @@ const handleRegister = async () => {
 }
 
 .register-button {
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
   font-weight: 600;
   font-size: 1rem;

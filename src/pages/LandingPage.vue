@@ -5,10 +5,21 @@
       <div class="hero-section">
         <div class="hero-content">
           <div class="logo-animation">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
-              <rect x="2" y="3" width="20" height="18" rx="2" stroke="#C4F64F" stroke-width="2"/>
-              <path d="M7 8L10 12L7 16" stroke="#C4F64F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M13 16H17" stroke="#C4F64F" stroke-width="2" stroke-linecap="round"/>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="logo-svg"
+            >
+              <rect x="2" y="3" width="20" height="18" rx="2" stroke="#C4F64F" stroke-width="2" />
+              <path
+                d="M7 8L10 12L7 16"
+                stroke="#C4F64F"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path d="M13 16H17" stroke="#C4F64F" stroke-width="2" stroke-linecap="round" />
             </svg>
           </div>
           <h1 class="hero-title">
@@ -94,9 +105,15 @@
           <div class="footer-brand">
             <div class="footer-logo">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2" y="3" width="20" height="18" rx="2" stroke="#C4F64F" stroke-width="2"/>
-                <path d="M7 8L10 12L7 16" stroke="#C4F64F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13 16H17" stroke="#C4F64F" stroke-width="2" stroke-linecap="round"/>
+                <rect x="2" y="3" width="20" height="18" rx="2" stroke="#C4F64F" stroke-width="2" />
+                <path
+                  d="M7 8L10 12L7 16"
+                  stroke="#C4F64F"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path d="M13 16H17" stroke="#C4F64F" stroke-width="2" stroke-linecap="round" />
               </svg>
             </div>
             <span class="footer-brand-name">TASKY</span>
@@ -109,61 +126,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
-const featuresSection = ref<HTMLElement | null>(null)
+const router = useRouter();
+const featuresSection = ref<HTMLElement | null>(null);
 
 const features = [
   {
     icon: 'dashboard',
     title: 'Real-time Analytics',
-    description: 'Track progress with live dashboards and comprehensive reports'
+    description: 'Track progress with live dashboards and comprehensive reports',
   },
   {
     icon: 'groups',
     title: 'Team Collaboration',
-    description: 'Work together seamlessly with integrated communication tools'
+    description: 'Work together seamlessly with integrated communication tools',
   },
   {
     icon: 'task_alt',
     title: 'Smart Task Management',
-    description: 'Organize work efficiently with intelligent task prioritization'
+    description: 'Organize work efficiently with intelligent task prioritization',
   },
   {
     icon: 'schedule',
     title: 'Time Tracking',
-    description: 'Monitor time spent on tasks and optimize productivity'
+    description: 'Monitor time spent on tasks and optimize productivity',
   },
   {
     icon: 'insights',
     title: 'Resource Planning',
-    description: 'Allocate resources effectively based on workload analysis'
+    description: 'Allocate resources effectively based on workload analysis',
   },
   {
     icon: 'security',
     title: 'Enterprise Security',
-    description: 'Bank-level security to protect your project data'
-  }
-]
+    description: 'Bank-level security to protect your project data',
+  },
+];
 
 const stats = [
   { number: '10K+', label: 'Active Users' },
   { number: '50K+', label: 'Projects Completed' },
   { number: '99.9%', label: 'Uptime' },
-  { number: '24/7', label: 'Support' }
-]
+  { number: '24/7', label: 'Support' },
+];
 
 const navigateToAuth = () => {
-  void router.push('/auth/login')
-}
+  void router.push('/auth/login');
+};
 
 const scrollToFeatures = () => {
   if (featuresSection.value) {
-    featuresSection.value.scrollIntoView({ behavior: 'smooth' })
+    featuresSection.value.scrollIntoView({ behavior: 'smooth' });
   }
-}
+};
 </script>
 
 <style scoped>
@@ -235,7 +252,7 @@ const scrollToFeatures = () => {
 }
 
 .title-accent {
-  color: #C4F64F;
+  color: #c4f64f;
 }
 
 .hero-subtitle {
@@ -263,7 +280,7 @@ const scrollToFeatures = () => {
 }
 
 .cta-button.primary {
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
 }
 
@@ -285,7 +302,7 @@ const scrollToFeatures = () => {
 .cta-button.large {
   padding: 1.25rem 3rem;
   font-size: 1.125rem;
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
 }
 
@@ -395,7 +412,7 @@ const scrollToFeatures = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #C4F64F;
+  color: #c4f64f;
 }
 
 .feature-title {
@@ -433,7 +450,7 @@ const scrollToFeatures = () => {
 .stat-number {
   font-size: 3rem;
   font-weight: 800;
-  color: #C4F64F;
+  color: #c4f64f;
   margin-bottom: 0.5rem;
 }
 
@@ -492,7 +509,7 @@ const scrollToFeatures = () => {
 .footer-brand-name {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #C4F64F;
+  color: #c4f64f;
 }
 
 .footer-text {
@@ -514,7 +531,8 @@ const scrollToFeatures = () => {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {

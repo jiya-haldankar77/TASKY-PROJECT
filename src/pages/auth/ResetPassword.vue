@@ -18,11 +18,15 @@
           @update:model-value="checkPasswordStrength"
           :rules="[
             (val: string | null) => !!val || 'Password is required',
-            (val: string | null) => val && val.length >= 8 || 'Password must be at least 8 characters',
-            (val: string | null) => val && hasUpperCase(val) || 'Password must contain uppercase letter',
-            (val: string | null) => val && hasLowerCase(val) || 'Password must contain lowercase letter',
-            (val: string | null) => val && hasNumber(val) || 'Password must contain a number',
-            (val: string | null) => val && hasSpecialChar(val) || 'Password must contain special character'
+            (val: string | null) =>
+              (val && val.length >= 8) || 'Password must be at least 8 characters',
+            (val: string | null) =>
+              (val && hasUpperCase(val)) || 'Password must contain uppercase letter',
+            (val: string | null) =>
+              (val && hasLowerCase(val)) || 'Password must contain lowercase letter',
+            (val: string | null) => (val && hasNumber(val)) || 'Password must contain a number',
+            (val: string | null) =>
+              (val && hasSpecialChar(val)) || 'Password must contain special character',
           ]"
         >
           <template v-slot:prepend>
@@ -62,7 +66,7 @@
           placeholder="Confirm your new password"
           :rules="[
             (val: string | null) => !!val || 'Please confirm your password',
-            (val: string | null) => val === form.password || 'Passwords do not match'
+            (val: string | null) => val === form.password || 'Passwords do not match',
           ]"
         >
           <template v-slot:prepend>
@@ -115,12 +119,7 @@
         </q-card-section>
 
         <q-card-actions align="center" class="dialog-actions">
-          <q-btn
-            label="Go to Login"
-            color="primary"
-            @click="handleSuccessOk"
-            no-caps
-          />
+          <q-btn label="Go to Login" color="primary" @click="handleSuccessOk" no-caps />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -128,83 +127,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+import { ref, reactive, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const loading = ref(false)
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
-const passwordStrength = ref(0)
-const showSuccessDialog = ref(false)
+const loading = ref(false);
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
+const passwordStrength = ref(0);
+const showSuccessDialog = ref(false);
 
 const form = reactive({
   password: '',
-  confirmPassword: ''
-})
+  confirmPassword: '',
+});
 
-const hasUpperCase = (password: string | null): boolean => password ? /[A-Z]/.test(password) : false
-const hasLowerCase = (password: string | null): boolean => password ? /[a-z]/.test(password) : false
-const hasNumber = (password: string | null): boolean => password ? /\d/.test(password) : false
-const hasSpecialChar = (password: string | null): boolean => password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false
+const hasUpperCase = (password: string | null): boolean =>
+  password ? /[A-Z]/.test(password) : false;
+const hasLowerCase = (password: string | null): boolean =>
+  password ? /[a-z]/.test(password) : false;
+const hasNumber = (password: string | null): boolean => (password ? /\d/.test(password) : false);
+const hasSpecialChar = (password: string | null): boolean =>
+  password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false;
 
 const checkPasswordStrength = () => {
-  let strength = 0
-  if (form.password.length >= 8) strength++
-  if (hasUpperCase(form.password)) strength++
-  if (hasLowerCase(form.password)) strength++
-  if (hasNumber(form.password)) strength++
-  if (hasSpecialChar(form.password)) strength++
-  passwordStrength.value = strength
-}
+  let strength = 0;
+  if (form.password.length >= 8) strength++;
+  if (hasUpperCase(form.password)) strength++;
+  if (hasLowerCase(form.password)) strength++;
+  if (hasNumber(form.password)) strength++;
+  if (hasSpecialChar(form.password)) strength++;
+  passwordStrength.value = strength;
+};
 
-const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100)
+const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100);
 
 const strengthClass = computed(() => {
-  if (passwordStrength.value <= 2) return 'weak'
-  if (passwordStrength.value <= 3) return 'medium'
-  return 'strong'
-})
+  if (passwordStrength.value <= 2) return 'weak';
+  if (passwordStrength.value <= 3) return 'medium';
+  return 'strong';
+});
 
 const strengthText = computed(() => {
-  if (passwordStrength.value <= 2) return 'Weak password'
-  if (passwordStrength.value <= 3) return 'Medium strength'
-  return 'Strong password'
-})
+  if (passwordStrength.value <= 2) return 'Weak password';
+  if (passwordStrength.value <= 3) return 'Medium strength';
+  return 'Strong password';
+});
 
 const handleSubmit = async () => {
-  loading.value = true
-  
+  loading.value = true;
+
   try {
-    const token = typeof route.query.token === 'string' ? route.query.token : ''
-    if (!token) {
-      alert('This reset link is invalid or expired')
-      return
-    }
-    const result = await authStore.resetPassword(token, form.password)
-    
+    const result = await authStore.resetPassword();
+
     if (result.success) {
-      showSuccessDialog.value = true
+      showSuccessDialog.value = true;
     } else {
-      alert('Failed to reset password: ' + (result.error || 'Unknown error'))
+      alert('Failed to reset password: ' + (result.error || 'Unknown error'));
     }
   } catch (error) {
-    console.error('Reset password error:', error)
-    alert('An error occurred')
+    console.error('Reset password error:', error);
+    alert('An error occurred');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSuccessOk = () => {
-  showSuccessDialog.value = false
-  void router.push('/auth/login')
-}
+  showSuccessDialog.value = false;
+  void router.push('/auth/login');
+};
 </script>
 
 <style scoped>
@@ -300,7 +295,7 @@ const handleSuccessOk = () => {
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
   font-weight: 600;
   font-size: 1rem;

@@ -16,13 +16,13 @@ The frontend is built using **Vue 3 + Quasar Framework** (with TypeScript and Pi
 
 Organizations routinely struggle with:
 
-| Challenge | Impact |
-|---|---|
-| Shared resources across projects | Workload conflicts and burnout |
-| Complex task dependencies | Cascading delays when one task slips |
-| No unified progress view | Blind spots in project health |
-| Manual scheduling | Suboptimal resource allocation |
-| Late risk detection | Missed deadlines and budget overruns |
+| Challenge                        | Impact                               |
+| -------------------------------- | ------------------------------------ |
+| Shared resources across projects | Workload conflicts and burnout       |
+| Complex task dependencies        | Cascading delays when one task slips |
+| No unified progress view         | Blind spots in project health        |
+| Manual scheduling                | Suboptimal resource allocation       |
+| Late risk detection              | Missed deadlines and budget overruns |
 
 Tasky solves these by providing a **centralized, intelligent platform** that automates workload analysis, dependency tracking, schedule impact analysis, and progress monitoring.
 
@@ -32,35 +32,36 @@ Tasky solves these by providing a **centralized, intelligent platform** that aut
 
 ### 3.1 Project Manager (PM)
 
-| Capability | Description |
-|---|---|
-| Project CRUD | Create, update, delete projects with timelines and priorities |
-| Task Management | Create multiple tasks under each project with priority, deadline, expected effort, and dependencies |
-| Resource Assignment | Assign one or multiple employees to a task |
-| Team Management | Add/remove employees; create roles for sign-up |
-| Overall Project View | View the overall status of **only the projects they manage** — task status, resource allocation, progress, deadlines |
-| AI-Powered Suggestions | Receive resource recommendations and schedule adjustments |
-| PM Analytics Dashboard | Dedicated analytics dashboard — task priority distribution, workload graphs, progress trends, risk analysis |
-| Monitor Daily Logs | See which employees have not submitted their daily log; view warnings for non-compliance |
-| Comments & Communication | Comment on tasks with employees |
-| Notifications | Receive alerts for overdue tasks, risk flags, resource conflicts, missing daily logs |
+| Capability               | Description                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Project CRUD             | Create, update, delete projects with timelines and priorities                                                        |
+| Task Management          | Create multiple tasks under each project with priority, deadline, expected effort, and dependencies                  |
+| Resource Assignment      | Assign one or multiple employees to a task                                                                           |
+| Team Management          | Add/remove employees; create roles for sign-up                                                                       |
+| Overall Project View     | View the overall status of **only the projects they manage** — task status, resource allocation, progress, deadlines |
+| AI-Powered Suggestions   | Receive resource recommendations and schedule adjustments                                                            |
+| PM Analytics Dashboard   | Dedicated analytics dashboard — task priority distribution, workload graphs, progress trends, risk analysis          |
+| Monitor Daily Logs       | See which employees have not submitted their daily log; view warnings for non-compliance                             |
+| Comments & Communication | Comment on tasks with employees                                                                                      |
+| Notifications            | Receive alerts for overdue tasks, risk flags, resource conflicts, missing daily logs                                 |
 
 ### 3.2 Employee (Resource)
 
-| Capability | Description |
-|---|---|
-| Task View | View **only their own** assigned tasks across all projects |
-| Workload View | See current workload and upcoming deadlines |
-| Self-Assigned Tasks | Create tasks when required (self-assigning) |
-| Daily Progress Updates | At the end of each day, update progress for all tasks worked on — indicate whether task is **completed**, **partially completed**, or **still in progress** and provide relevant details |
-| Work Log Submission | Provide daily status: work completed, remaining work, hours spent, and comments |
-| Employee Analytics Dashboard | Dedicated analytics dashboard — personal performance, task completion rate, workload trends |
-| Delay Reasons | Enter reason for delay after 2-3 days of no progress |
-| Weekend/Leave Management | Mark weekend availability, request leave |
+| Capability                   | Description                                                                                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task View                    | View **only their own** assigned tasks across all projects                                                                                                                               |
+| Workload View                | See current workload and upcoming deadlines                                                                                                                                              |
+| Self-Assigned Tasks          | Create tasks when required (self-assigning)                                                                                                                                              |
+| Daily Progress Updates       | At the end of each day, update progress for all tasks worked on — indicate whether task is **completed**, **partially completed**, or **still in progress** and provide relevant details |
+| Work Log Submission          | Provide daily status: work completed, remaining work, hours spent, and comments                                                                                                          |
+| Employee Analytics Dashboard | Dedicated analytics dashboard — personal performance, task completion rate, workload trends                                                                                              |
+| Delay Reasons                | Enter reason for delay after 2-3 days of no progress                                                                                                                                     |
+| Weekend/Leave Management     | Mark weekend availability, request leave                                                                                                                                                 |
 
 > [!IMPORTANT]
 > **Mandatory Daily Log Enforcement**
 > Employees **must** log their entries daily. If an employee does not submit their daily work log:
+>
 > - A **reminder notification** is sent at the end of the work day (e.g., 5:00 PM).
 > - The **next day**, a **warning** is prominently displayed on the employee's dashboard indicating missing log entries.
 > - The PM dashboard also flags employees with missing daily logs.
@@ -122,12 +123,12 @@ flowchart TD
 
 ### Feature 3 — Predictive Progress & Deadline Monitoring
 
-| Status | Condition | Visual Indicator |
-|---|---|---|
-| ✅ On Track | Progress ≥ expected pace | Green progress bar |
-| ⚠️ At Risk | Progress slightly behind | Orange progress bar |
-| 🔴 Delayed | Progress significantly behind or deadline passed | Red progress bar |
-| ✔️ Completed | Task finished | Full green bar |
+| Status       | Condition                                        | Visual Indicator    |
+| ------------ | ------------------------------------------------ | ------------------- |
+| ✅ On Track  | Progress ≥ expected pace                         | Green progress bar  |
+| ⚠️ At Risk   | Progress slightly behind                         | Orange progress bar |
+| 🔴 Delayed   | Progress significantly behind or deadline passed | Red progress bar    |
+| ✔️ Completed | Task finished                                    | Full green bar      |
 
 - **Daily Progress History**: Maintains a timestamped log of progress changes for every task.
 - **Pace Analysis**: Compares actual progress vs. expected progress based on effort and elapsed time.
@@ -200,14 +201,14 @@ flowchart TD
 
 ### Feature 6 — AI-Powered Intelligence Layer
 
-| AI Feature | Description |
-|---|---|
-| Resource Suggestions | Recommends best-fit employees for new tasks |
-| Schedule Adjustments | Suggests deadline changes when dependencies shift |
-| Risk Prediction | Identifies tasks at risk of missing deadlines |
-| Delay Analysis | Analyzes delay patterns and suggests mitigations |
-| Task Details | AI-generated task descriptions and detail enrichment |
-| Don't Classify | Option to override AI categorization when it's not applicable |
+| AI Feature           | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| Resource Suggestions | Recommends best-fit employees for new tasks                   |
+| Schedule Adjustments | Suggests deadline changes when dependencies shift             |
+| Risk Prediction      | Identifies tasks at risk of missing deadlines                 |
+| Delay Analysis       | Analyzes delay patterns and suggests mitigations              |
+| Task Details         | AI-generated task descriptions and detail enrichment          |
+| Don't Classify       | Option to override AI categorization when it's not applicable |
 
 ---
 
@@ -230,18 +231,18 @@ flowchart TD
 
 Based on the current codebase and discussion notes:
 
-| Page | Route | Role | Purpose |
-|---|---|---|---|
-| PM Dashboard | `/dashboard` | Manager | Overall progress of projects **they manage**, quick CTAs, current updates, missing daily log flags |
-| Projects | `/projects` | Manager | List all projects with status, priority, timeline |
-| Project Detail | `/projects/:id` | Manager | Deep-dive into a project — tasks, timeline, resources |
-| Tasks | `/tasks` | Manager | All tasks across projects with filters and sorting |
-| Resources | `/resources` | Manager | Resource list, workload graphs, availability |
-| PM Analytics | `/analytics` | Manager | Charts, priority distribution, performance metrics, daily log compliance |
-| Employee Dashboard | `/employee-dashboard` | Employee | Personal overview — assigned tasks, workload, **daily log warnings** |
-| My Tasks | `/my-tasks` | Employee | Task list with status updates and self-assignment |
-| Work Log | `/work-log` | Employee | Daily work log entry and history |
-| Employee Analytics | `/employee-analytics` | Employee | Personal performance charts, completion rate, workload trends, log compliance |
+| Page               | Route                 | Role     | Purpose                                                                                            |
+| ------------------ | --------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| PM Dashboard       | `/dashboard`          | Manager  | Overall progress of projects **they manage**, quick CTAs, current updates, missing daily log flags |
+| Projects           | `/projects`           | Manager  | List all projects with status, priority, timeline                                                  |
+| Project Detail     | `/projects/:id`       | Manager  | Deep-dive into a project — tasks, timeline, resources                                              |
+| Tasks              | `/tasks`              | Manager  | All tasks across projects with filters and sorting                                                 |
+| Resources          | `/resources`          | Manager  | Resource list, workload graphs, availability                                                       |
+| PM Analytics       | `/analytics`          | Manager  | Charts, priority distribution, performance metrics, daily log compliance                           |
+| Employee Dashboard | `/employee-dashboard` | Employee | Personal overview — assigned tasks, workload, **daily log warnings**                               |
+| My Tasks           | `/my-tasks`           | Employee | Task list with status updates and self-assignment                                                  |
+| Work Log           | `/work-log`           | Employee | Daily work log entry and history                                                                   |
+| Employee Analytics | `/employee-analytics` | Employee | Personal performance charts, completion rate, workload trends, log compliance                      |
 
 ---
 
@@ -298,23 +299,23 @@ sequenceDiagram
 
 ### 7.1 Frontend Stack
 
-| Technology | Purpose |
-|---|---|
-| **Vue 3** | Reactive UI framework |
-| **Quasar Framework v2** | Component library & build tooling |
-| **TypeScript** | Type-safe development |
-| **Pinia** | State management |
-| **Vue Router** | Client-side routing |
-| **Vite** | Build tool (via `@quasar/app-vite`) |
+| Technology              | Purpose                             |
+| ----------------------- | ----------------------------------- |
+| **Vue 3**               | Reactive UI framework               |
+| **Quasar Framework v2** | Component library & build tooling   |
+| **TypeScript**          | Type-safe development               |
+| **Pinia**               | State management                    |
+| **Vue Router**          | Client-side routing                 |
+| **Vite**                | Build tool (via `@quasar/app-vite`) |
 
 ### 7.2 Backend Stack (Planned)
 
-| Technology | Purpose |
-|---|---|
-| **Node.js / Express** (or Spring Boot) | REST API server |
-| **MySQL** | Relational database |
-| **JWT** | Authentication tokens |
-| **AI/ML Service** | Resource recommendation & risk prediction |
+| Technology                             | Purpose                                   |
+| -------------------------------------- | ----------------------------------------- |
+| **Node.js / Express** (or Spring Boot) | REST API server                           |
+| **MySQL**                              | Relational database                       |
+| **JWT**                                | Authentication tokens                     |
+| **AI/ML Service**                      | Resource recommendation & risk prediction |
 
 ### 7.3 Architecture Diagram
 
@@ -378,28 +379,28 @@ erDiagram
 
 ## 9. Non-Functional Requirements
 
-| Requirement | Target |
-|---|---|
-| **Performance** | Dashboard loads in < 2 seconds |
-| **Scalability** | Support 50+ concurrent users, 100+ projects |
-| **Security** | JWT-based auth, role-based access control, encrypted passwords |
-| **Availability** | 99.5% uptime target |
-| **Responsiveness** | Mobile-friendly Quasar layout |
-| **Data Integrity** | Referential integrity via MySQL foreign keys |
-| **Audit Trail** | All progress changes and status updates are timestamped |
+| Requirement        | Target                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| **Performance**    | Dashboard loads in < 2 seconds                                 |
+| **Scalability**    | Support 50+ concurrent users, 100+ projects                    |
+| **Security**       | JWT-based auth, role-based access control, encrypted passwords |
+| **Availability**   | 99.5% uptime target                                            |
+| **Responsiveness** | Mobile-friendly Quasar layout                                  |
+| **Data Integrity** | Referential integrity via MySQL foreign keys                   |
+| **Audit Trail**    | All progress changes and status updates are timestamped        |
 
 ---
 
 ## 10. Project Timeline (Suggested)
 
-| Phase | Duration | Deliverables |
-|---|---|---|
-| **Phase 1 — Foundation** | Week 1-2 | Database schema, Auth system, User/Role management |
-| **Phase 2 — Core CRUD** | Week 3-4 | Project, Task, Assignment CRUD APIs + Frontend pages |
-| **Phase 3 — Workload & Scheduling** | Week 5-6 | Workload calculation, dependency tracking, schedule impact |
-| **Phase 4 — Progress & Monitoring** | Week 7-8 | Daily work logs, progress tracking, risk detection |
-| **Phase 5 — AI & Analytics** | Week 9-10 | Resource recommendations, analytics dashboards, charts |
-| **Phase 6 — Polish & Deploy** | Week 11-12 | Notifications, reminders, testing, deployment |
+| Phase                               | Duration   | Deliverables                                               |
+| ----------------------------------- | ---------- | ---------------------------------------------------------- |
+| **Phase 1 — Foundation**            | Week 1-2   | Database schema, Auth system, User/Role management         |
+| **Phase 2 — Core CRUD**             | Week 3-4   | Project, Task, Assignment CRUD APIs + Frontend pages       |
+| **Phase 3 — Workload & Scheduling** | Week 5-6   | Workload calculation, dependency tracking, schedule impact |
+| **Phase 4 — Progress & Monitoring** | Week 7-8   | Daily work logs, progress tracking, risk detection         |
+| **Phase 5 — AI & Analytics**        | Week 9-10  | Resource recommendations, analytics dashboards, charts     |
+| **Phase 6 — Polish & Deploy**       | Week 11-12 | Notifications, reminders, testing, deployment              |
 
 ---
 
@@ -421,12 +422,12 @@ erDiagram
 
 ## 12. Glossary
 
-| Term | Definition |
-|---|---|
-| **Resource** | An employee/team member who is assigned tasks |
-| **Expected Effort** | Estimated hours needed to complete a task |
-| **Dependency** | A predecessor-successor relationship between tasks |
-| **Workload** | Total assigned effort hours for a resource in a given period |
-| **Progress Pace** | The rate of task completion compared to the expected timeline |
-| **CTA** | Call To Action — quick action buttons on the dashboard |
-| **Phase** | A logical grouping of tasks within a project |
+| Term                | Definition                                                    |
+| ------------------- | ------------------------------------------------------------- |
+| **Resource**        | An employee/team member who is assigned tasks                 |
+| **Expected Effort** | Estimated hours needed to complete a task                     |
+| **Dependency**      | A predecessor-successor relationship between tasks            |
+| **Workload**        | Total assigned effort hours for a resource in a given period  |
+| **Progress Pace**   | The rate of task completion compared to the expected timeline |
+| **CTA**             | Call To Action — quick action buttons on the dashboard        |
+| **Phase**           | A logical grouping of tasks within a project                  |

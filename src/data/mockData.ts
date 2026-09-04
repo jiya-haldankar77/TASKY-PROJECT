@@ -19,12 +19,12 @@ export interface Task {
   description: string;
   projectId: string;
   employeeId?: string;
-  status: string; // 'pending', 'in_progress', 'review', 'completed'
-  priority: string; // 'low', 'medium', 'high', 'critical'
+  status: 'not-started' | 'in-progress' | 'completed' | 'blocked';
+  priority: 'low' | 'medium' | 'high' | 'critical';
   deadline: string;
   expectedEffort: number;
   progress: number;
-  assignedResources?: string[];
+  assignedResources: string[];
   dependencies?: string[];
 }
 
@@ -35,7 +35,7 @@ export interface WorkLog {
   date: string;
   hours: number;
   notes: string;
-  status: string;
+  status: 'completed' | 'in-progress' | 'partially-completed';
   hoursSpent: number;
   previousProgress: number;
   newProgress: number;
@@ -45,8 +45,18 @@ export interface WorkLog {
 }
 
 export const mockEmployees: Employee[] = [
-  { id: 'emp-1', name: 'Sarah Johnson', role: 'Frontend Dev', avatar: 'https://i.pravatar.cc/150?img=1' },
-  { id: 'emp-2', name: 'Michael Chen', role: 'Backend Dev', avatar: 'https://i.pravatar.cc/150?img=2' },
+  {
+    id: 'emp-1',
+    name: 'Sarah Johnson',
+    role: 'Frontend Dev',
+    avatar: 'https://i.pravatar.cc/150?img=1',
+  },
+  {
+    id: 'emp-2',
+    name: 'Michael Chen',
+    role: 'Backend Dev',
+    avatar: 'https://i.pravatar.cc/150?img=2',
+  },
 ];
 
 export const mockProjects: Project[] = [
@@ -54,7 +64,19 @@ export const mockProjects: Project[] = [
 ];
 
 export const mockTasks: Task[] = [
-  { id: 'task-1', title: 'Design Homepage', description: 'Create homepage mockup', projectId: 'proj-1', employeeId: 'emp-1', status: 'in_progress', priority: 'high', deadline: '2026-09-01', expectedEffort: 40, progress: 50 },
+  {
+    id: 'task-1',
+    title: 'Design Homepage',
+    description: 'Create homepage mockup',
+    projectId: 'proj-1',
+    employeeId: 'emp-1',
+    status: 'in-progress',
+    priority: 'high',
+    deadline: '2026-09-01',
+    expectedEffort: 40,
+    progress: 50,
+    assignedResources: ['emp-1'],
+  },
 ];
 
 export const mockWorkLogs: WorkLog[] = [];

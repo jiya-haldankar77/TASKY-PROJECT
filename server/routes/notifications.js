@@ -1,39 +1,86 @@
 import { Router } from 'express';
 const router = Router();
 
-function fail(res, error) {
-  console.error('Notification API error:', error);
-  res.status(500).json({ success: false, error: 'Server error' });
-}
-
 export default function notificationRoutes(pool) {
+  // GET /api/pm/notifications
   router.get('/', async (req, res) => {
     try {
-      const [notifications] = await pool.execute('SELECT id, user_id, type, title, message, reference_type, reference_id, is_read, created_at FROM notification WHERE user_id = ? ORDER BY created_at DESC', [req.user.id]);
+      const userId = req.user.id;
+
+      const [notifications] = await pool.execute(
+        `
+        SELECT * FROM notification
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+      `,
+        [userId],
+      );
+
       res.json({ success: true, notifications });
-    } catch (error) { fail(res, error); }
+    } catch (error) {
+      console.error('Get notifications error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
   });
-  router.put('/read-all', async (req, res) => {
-    try {
-      const [result] = await pool.execute('UPDATE notification SET is_read = 1 WHERE user_id = ? AND is_read = 0', [req.user.id]);
-      res.json({ success: true, updated: result.affectedRows });
-    } catch (error) { fail(res, error); }
-  });
+
+  // PUT /api/pm/notifications/:id/read
   router.put('/:id/read', async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ success: false, error: 'Notification not found' });
-      const [result] = await pool.execute('UPDATE notification SET is_read = 1 WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-      if (result.affectedRows !== 1) return res.status(404).json({ success: false, error: 'Notification not found' });
+      const userId = req.user.id;
+      const notifId = req.params.id;
+
+      await pool.execute(
+        `
+        UPDATE notification SET is_read = 1 WHERE id = ? AND user_id = ?
+      `,
+        [notifId, userId],
+      );
+
       res.json({ success: true });
-    } catch (error) { fail(res, error); }
+    } catch (error) {
+      console.error('Mark read error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
   });
+
+  // PUT /api/pm/notifications/read-all
+  router.put('/read-all', async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      await pool.execute(
+        `
+        UPDATE notification SET is_read = 1 WHERE user_id = ? AND is_read = 0
+      `,
+        [userId],
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Mark all read error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // DELETE /api/pm/notifications/:id
   router.delete('/:id', async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ success: false, error: 'Notification not found' });
-      const [result] = await pool.execute('DELETE FROM notification WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-      if (result.affectedRows !== 1) return res.status(404).json({ success: false, error: 'Notification not found' });
+      const userId = req.user.id;
+      const notifId = req.params.id;
+
+      await pool.execute(
+        `
+        DELETE FROM notification WHERE id = ? AND user_id = ?
+      `,
+        [notifId, userId],
+      );
+
       res.json({ success: true });
-    } catch (error) { fail(res, error); }
+    } catch (error) {
+      console.error('Delete notification error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
   });
+
   return router;
 }

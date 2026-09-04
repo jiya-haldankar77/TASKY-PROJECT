@@ -2,7 +2,12 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h4 text-weight-bold">My Tasks</div>
-      <q-btn color="primary" icon="add" label="Self-Assign Task" @click="showCreateTaskDialog = true" />
+      <q-btn
+        color="primary"
+        icon="add"
+        label="Self-Assign Task"
+        @click="showCreateTaskDialog = true"
+      />
     </div>
 
     <!-- Filters -->
@@ -39,12 +44,7 @@
             />
           </div>
           <div class="col-12 col-sm-2">
-            <q-btn
-              color="grey"
-              label="Clear Filters"
-              class="full-width"
-              @click="clearFilters"
-            />
+            <q-btn color="grey" label="Clear Filters" class="full-width" @click="clearFilters" />
           </div>
         </div>
       </q-card-section>
@@ -62,8 +62,13 @@
         <q-card class="cursor-pointer" @click="showTaskDetail(task)">
           <q-card-section>
             <div class="row items-center q-mb-sm">
-              <q-avatar :style="{ backgroundColor: getProjectById(task.projectId)?.color }" size="32px" text-color="white" class="q-mr-sm">
-                {{ getProjectById(task.projectId)?.name.charAt(0) }}
+              <q-avatar
+                :style="{ backgroundColor: getProjectById(task.project_id)?.color }"
+                size="32px"
+                text-color="white"
+                class="q-mr-sm"
+              >
+                {{ getProjectById(task.project_id)?.name.charAt(0) }}
               </q-avatar>
               <div class="text-subtitle1 text-weight-bold">{{ task.title }}</div>
               <q-space />
@@ -71,7 +76,9 @@
                 {{ task.priority }}
               </q-badge>
             </div>
-            <div class="text-caption text-grey-7 q-mb-sm">{{ getProjectById(task.projectId)?.name }}</div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              {{ getProjectById(task.project_id)?.name }}
+            </div>
             <div class="text-caption q-mb-sm">{{ task.description }}</div>
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-6">
@@ -89,16 +96,25 @@
             </div>
             <div class="q-mb-sm">
               <div class="text-caption text-grey-6">Progress</div>
-              <q-linear-progress :value="task.progress / 100" :color="getProgressColor(task.progress)" />
+              <q-linear-progress
+                :value="task.progress / 100"
+                :color="getProgressColor(task.progress)"
+              />
               <div class="text-caption text-right">{{ task.progress }}%</div>
             </div>
             <div class="row items-center text-caption text-grey-6">
               <div class="col-6">
-                <q-icon name="schedule"	class="q-mr-xs" />
-                {{ task.expectedEffort }}h estimated
+                <q-icon name="schedule" class="q-mr-xs" />
+                {{ task.expected_effort }}h estimated
               </div>
               <div class="col-6 text-right">
-                <q-btn flat dense color="primary" label="Update Progress" @click.stop="openUpdateDialog(task)" />
+                <q-btn
+                  flat
+                  dense
+                  color="primary"
+                  label="Update Progress"
+                  @click.stop="openUpdateDialog(task)"
+                />
               </div>
             </div>
           </q-card-section>
@@ -119,7 +135,7 @@
               label="Task Title"
               outlined
               class="q-mb-md"
-              :rules="[val => !!val || 'Title is required']"
+              :rules="[(val) => !!val || 'Title is required']"
             />
             <q-input
               v-model="newTask.description"
@@ -137,16 +153,11 @@
               emit-value
               map-options
               class="q-mb-md"
-              :rules="[val => !!val || 'Project is required']"
+              :rules="[(val) => !!val || 'Project is required']"
             />
             <div class="row q-col-gutter-md q-mb-md">
               <div class="col-6">
-                <q-input
-                  v-model="newTask.deadline"
-                  label="Deadline"
-                  outlined
-                  type="date"
-                />
+                <q-input v-model="newTask.deadline" label="Deadline" outlined type="date" />
               </div>
               <div class="col-6">
                 <q-input
@@ -216,36 +227,42 @@
         <q-card-section class="q-pt-none">
           <div v-if="selectedTask">
             <div class="q-mb-md">
-              <strong>Project:</strong> {{ getProjectById(selectedTask.projectId)?.name }}
+              <strong>Project:</strong> {{ getProjectById(selectedTask.project_id)?.name }}
             </div>
-            <div class="q-mb-md">
-              <strong>Description:</strong> {{ selectedTask.description }}
-            </div>
+            <div class="q-mb-md"><strong>Description:</strong> {{ selectedTask.description }}</div>
             <div class="row q-col-gutter-md q-mb-md">
               <div class="col-6">
                 <strong>Priority:</strong>
-                <q-badge :color="getPriorityColor(selectedTask.priority)" class="q-ml-sm text-capitalize">
+                <q-badge
+                  :color="getPriorityColor(selectedTask.priority)"
+                  class="q-ml-sm text-capitalize"
+                >
                   {{ selectedTask.priority }}
                 </q-badge>
               </div>
               <div class="col-6">
                 <strong>Status:</strong>
-                <q-badge :color="getStatusColor(selectedTask.status)" class="q-ml-sm text-capitalize">
+                <q-badge
+                  :color="getStatusColor(selectedTask.status)"
+                  class="q-ml-sm text-capitalize"
+                >
                   {{ selectedTask.status.replace('-', ' ') }}
                 </q-badge>
               </div>
             </div>
             <div class="row q-col-gutter-md q-mb-md">
+              <div class="col-6"><strong>Deadline:</strong> {{ selectedTask.deadline }}</div>
               <div class="col-6">
-                <strong>Deadline:</strong> {{ selectedTask.deadline }}
-              </div>
-              <div class="col-6">
-                <strong>Expected Effort:</strong> {{ selectedTask.expectedEffort }}h
+                <strong>Expected Effort:</strong> {{ selectedTask.expected_effort }}h
               </div>
             </div>
             <div class="q-mb-md">
               <strong>Progress:</strong>
-              <q-linear-progress :value="selectedTask.progress / 100" color="primary" class="q-mt-sm" />
+              <q-linear-progress
+                :value="selectedTask.progress / 100"
+                color="primary"
+                class="q-mt-sm"
+              />
               <div class="text-caption">{{ selectedTask.progress }}%</div>
             </div>
             <q-separator class="q-my-md" />
@@ -254,12 +271,12 @@
               <q-timeline-entry
                 v-for="update in getProgressUpdatesByTask(selectedTask.id)"
                 :key="update.id"
-                :title="`${update.previousProgress}% → ${update.newProgress}%`"
-                :subtitle="update.date"
+                :title="`${update.previousProgress || 0}% → ${update.newProgress || 0}%`"
+                :subtitle="update.date || update.log_date"
               >
-                <div>{{ update.notes }}</div>
+                <div>{{ update.notes || update.work_completed }}</div>
                 <div class="text-caption text-grey-6">
-                  by {{ getEmployeeById(update.employeeId)?.name }}
+                  by {{ getEmployeeById(update.employeeId || update.user_id)?.name }}
                 </div>
               </q-timeline-entry>
             </q-timeline>
@@ -267,7 +284,11 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" v-close-popup />
-          <q-btn color="primary" label="Update Progress" @click="selectedTask && openUpdateDialog(selectedTask)" />
+          <q-btn
+            color="primary"
+            label="Update Progress"
+            @click="selectedTask && openUpdateDialog(selectedTask)"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -275,75 +296,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTaskStore } from '@/stores/taskStore'
-import type { Task } from '@/data/mockData'
+import { ref, computed } from 'vue';
+import { useTaskStore } from '../stores/taskStore';
 
-const taskStore = useTaskStore()
+const taskStore = useTaskStore();
 
-const showCreateTaskDialog = ref(false)
-const showTaskDialog = ref(false)
-const showUpdateDialog = ref(false)
-const selectedTask = ref<Task | null>(null)
-const progressUpdate = ref(0)
-const progressNotes = ref('')
+const showCreateTaskDialog = ref(false);
+const showTaskDialog = ref(false);
+const showUpdateDialog = ref(false);
+const selectedTask = ref<any>(null);
+const progressUpdate = ref(0);
+const progressNotes = ref('');
 
 const filters = ref({
-  project: null as string | null,
+  project: null as number | null,
   status: null as string | null,
-  priority: null as string | null
-})
+  priority: null as string | null,
+});
 
 const newTask = ref({
   title: '',
   description: '',
-  projectId: '',
+  projectId: null as number | null,
   deadline: '',
   expectedEffort: 8,
-  priority: 'medium'
-})
+  priority: 'medium',
+});
 
-const statusOptions = ['not-started', 'in-progress', 'completed', 'blocked']
-const priorityOptions = ['critical', 'high', 'medium', 'low']
+const statusOptions = ['not-started', 'in-progress', 'completed', 'blocked'];
+const priorityOptions = ['critical', 'high', 'medium', 'low'];
 
-const currentEmployee = computed(() => taskStore.currentEmployee)
-const projectsList = computed(() => taskStore.projectsList)
+const currentEmployee = computed(() => taskStore.currentEmployeeData);
+const projectsList = computed(() => taskStore.projectsList);
 
 const projectOptions = computed(() =>
-  projectsList.value.map(p => ({ label: p.name, value: p.id }))
-)
+  projectsList.value.map((p) => ({ label: p.name, value: p.id })),
+);
 
 const myTasks = computed(() => {
-  if (!currentEmployee.value) return []
-  return taskStore.getTasksByEmployee(currentEmployee.value.id)
-})
+  if (!currentEmployee.value) return [];
+  return taskStore.getTasksByEmployee(String(currentEmployee.value.id));
+});
 
 const filteredTasks = computed(() => {
-  let tasks = myTasks.value
+  let tasks = myTasks.value;
 
   if (filters.value.project) {
-    tasks = tasks.filter(t => t.projectId === filters.value.project)
+    tasks = tasks.filter((t) => t.project_id === filters.value.project);
   }
   if (filters.value.status) {
-    tasks = tasks.filter(t => t.status === filters.value.status)
+    tasks = tasks.filter((t) => t.status === filters.value.status);
   }
   if (filters.value.priority) {
-    tasks = tasks.filter(t => t.priority === filters.value.priority)
+    tasks = tasks.filter((t) => t.priority === filters.value.priority);
   }
 
-  return tasks
-})
+  return tasks;
+});
 
-function getProjectById(id: string) {
-  return taskStore.getProjectById(id)
+function getProjectById(id: number | string) {
+  return taskStore.getProjectById(id);
 }
 
-function getEmployeeById(id: string) {
-  return taskStore.getEmployeeById(id)
+function getEmployeeById(id: string | number) {
+  const emp = taskStore.getEmployeeById(id);
+  if (emp) {
+    return {
+      ...emp,
+      name: `${emp.first_name} ${emp.last_name}`,
+    };
+  }
+  return null;
 }
 
-function getProgressUpdatesByTask(taskId: string) {
-  return taskStore.getProgressUpdatesByTask(taskId)
+function getProgressUpdatesByTask(taskId: string | number) {
+  return taskStore.getProgressUpdatesByTask(String(taskId));
 }
 
 function getPriorityColor(priority: string) {
@@ -351,9 +378,9 @@ function getPriorityColor(priority: string) {
     critical: 'red',
     high: 'orange',
     medium: 'blue',
-    low: 'green'
-  }
-  return colors[priority] || 'grey'
+    low: 'green',
+  };
+  return colors[priority] || 'grey';
 }
 
 function getStatusColor(status: string) {
@@ -361,79 +388,81 @@ function getStatusColor(status: string) {
     'not-started': 'grey',
     'in-progress': 'blue',
     completed: 'green',
-    blocked: 'red'
-  }
-  return colors[status] || 'grey'
+    blocked: 'red',
+  };
+  return colors[status] || 'grey';
 }
 
 function getProgressColor(progress: number) {
-  if (progress >= 75) return 'green'
-  if (progress >= 50) return 'blue'
-  if (progress >= 25) return 'orange'
-  return 'red'
+  if (progress >= 75) return 'green';
+  if (progress >= 50) return 'blue';
+  if (progress >= 25) return 'orange';
+  return 'red';
 }
 
 function isOverdue(deadline: string) {
-  return new Date(deadline) < new Date()
+  return new Date(deadline) < new Date();
 }
 
 function clearFilters() {
   filters.value = {
     project: null,
     status: null,
-    priority: null
+    priority: null,
+  };
+}
+
+function showTaskDetail(task: any) {
+  selectedTask.value = task;
+  showTaskDialog.value = true;
+}
+
+function openUpdateDialog(task: any) {
+  selectedTask.value = task;
+  progressUpdate.value = task.progress;
+  progressNotes.value = '';
+  showUpdateDialog.value = true;
+  showTaskDialog.value = false;
+}
+
+async function createSelfAssignedTask() {
+  if (!newTask.value.title || !newTask.value.projectId || !currentEmployee.value) return;
+
+  try {
+    await taskStore.addTask({
+      project_id: newTask.value.projectId,
+      title: newTask.value.title,
+      description: newTask.value.description,
+      status: 'not-started',
+      priority: newTask.value.priority as 'medium' | 'critical' | 'high' | 'low',
+      deadline: newTask.value.deadline,
+      expected_effort: newTask.value.expectedEffort,
+      is_self_assigned: 1,
+    });
+
+    showCreateTaskDialog.value = false;
+    newTask.value = {
+      title: '',
+      description: '',
+      projectId: null,
+      deadline: '',
+      expectedEffort: 8,
+      priority: 'medium',
+    };
+  } catch (error) {
+    console.error('Error creating task:', error);
   }
 }
 
-function showTaskDetail(task: Task) {
-  selectedTask.value = task
-  showTaskDialog.value = true
-}
-
-function openUpdateDialog(task: Task) {
-  selectedTask.value = task
-  progressUpdate.value = task.progress
-  progressNotes.value = ''
-  showUpdateDialog.value = true
-  showTaskDialog.value = false
-}
-
-function createSelfAssignedTask() {
-  if (!newTask.value.title || !newTask.value.projectId || !currentEmployee.value) return
-  
-  taskStore.addTask({
-    projectId: newTask.value.projectId,
-    title: newTask.value.title,
-    description: newTask.value.description,
-    status: 'not-started',
-    priority: newTask.value.priority,
-    deadline: newTask.value.deadline,
-    expectedEffort: newTask.value.expectedEffort,
-    assignedResources: [currentEmployee.value.id],
-    dependencies: [],
-    progress: 0
-  })
-  
-  showCreateTaskDialog.value = false
-  newTask.value = {
-    title: '',
-    description: '',
-    projectId: '',
-    deadline: '',
-    expectedEffort: 8,
-    priority: 'medium'
-  }
-}
-
-function updateProgress() {
+async function updateProgress() {
   if (selectedTask.value && progressUpdate.value > selectedTask.value.progress) {
-    const updates: { progress: number; status?: 'completed' } = { progress: progressUpdate.value }
+    const updates: { progress: number; status?: 'completed' } = { progress: progressUpdate.value };
     if (progressUpdate.value === 100) {
-      updates.status = 'completed'
+      updates.status = 'completed';
     }
-    taskStore.updateTask(selectedTask.value.id, updates)
-    showUpdateDialog.value = false
-    showTaskDialog.value = false
+    await taskStore.updateTask(Number(selectedTask.value.id), updates);
+    showUpdateDialog.value = false;
+    showTaskDialog.value = false;
   }
 }
 </script>

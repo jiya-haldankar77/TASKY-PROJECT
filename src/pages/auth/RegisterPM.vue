@@ -9,13 +9,7 @@
       <div class="form-row">
         <div class="form-section">
           <label class="form-label">First Name</label>
-          <q-input
-            v-model="form.firstName"
-            outlined
-            dense
-            bg-color="grey-1"
-            placeholder="John"
-          >
+          <q-input v-model="form.firstName" outlined dense bg-color="grey-1" placeholder="John">
             <template v-slot:prepend>
               <q-icon name="person" color="grey-7" />
             </template>
@@ -24,13 +18,7 @@
 
         <div class="form-section">
           <label class="form-label">Surname</label>
-          <q-input
-            v-model="form.surname"
-            outlined
-            dense
-            bg-color="grey-1"
-            placeholder="Doe"
-          >
+          <q-input v-model="form.surname" outlined dense bg-color="grey-1" placeholder="Doe">
             <template v-slot:prepend>
               <q-icon name="person_outline" color="grey-7" />
             </template>
@@ -102,13 +90,7 @@
 
       <div class="form-section">
         <label class="form-label">Manager ID</label>
-        <q-input
-          v-model="form.managerId"
-          outlined
-          dense
-          bg-color="grey-1"
-          placeholder="PM001"
-        >
+        <q-input v-model="form.managerId" outlined dense bg-color="grey-1" placeholder="PM001">
           <template v-slot:prepend>
             <q-icon name="badge" color="grey-7" />
           </template>
@@ -177,13 +159,10 @@
       </div>
 
       <div class="form-section">
-        <q-checkbox
-          v-model="form.agreeTerms"
-          dense
-          color="green-7"
-        >
+        <q-checkbox v-model="form.agreeTerms" dense color="green-7">
           <span class="terms-text">
-            I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a>
+            I agree to the <a href="#" class="terms-link">Terms of Service</a> and
+            <a href="#" class="terms-link">Privacy Policy</a>
           </span>
         </q-checkbox>
       </div>
@@ -215,17 +194,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+import { ref, reactive, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
 
-const loading = ref(false)
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
-const passwordStrength = ref(0)
+const loading = ref(false);
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
+const passwordStrength = ref(0);
 
 const form = reactive({
   firstName: '',
@@ -237,76 +214,84 @@ const form = reactive({
   managerId: '',
   password: '',
   confirmPassword: '',
-  agreeTerms: false
-})
+  agreeTerms: false,
+});
 
-const hasUpperCase = (password: string | null): boolean => password ? /[A-Z]/.test(password) : false
-const hasLowerCase = (password: string | null): boolean => password ? /[a-z]/.test(password) : false
-const hasNumber = (password: string | null): boolean => password ? /\d/.test(password) : false
-const hasSpecialChar = (password: string | null): boolean => password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false
+const hasUpperCase = (password: string | null): boolean =>
+  password ? /[A-Z]/.test(password) : false;
+const hasLowerCase = (password: string | null): boolean =>
+  password ? /[a-z]/.test(password) : false;
+const hasNumber = (password: string | null): boolean => (password ? /\d/.test(password) : false);
+const hasSpecialChar = (password: string | null): boolean =>
+  password ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : false;
 
 const checkPasswordStrength = () => {
-  let strength = 0
-  if (form.password.length >= 8) strength++
-  if (hasUpperCase(form.password)) strength++
-  if (hasLowerCase(form.password)) strength++
-  if (hasNumber(form.password)) strength++
-  if (hasSpecialChar(form.password)) strength++
-  passwordStrength.value = strength
-}
+  let strength = 0;
+  if (form.password.length >= 8) strength++;
+  if (hasUpperCase(form.password)) strength++;
+  if (hasLowerCase(form.password)) strength++;
+  if (hasNumber(form.password)) strength++;
+  if (hasSpecialChar(form.password)) strength++;
+  passwordStrength.value = strength;
+};
 
-const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100)
+const strengthPercentage = computed(() => (passwordStrength.value / 5) * 100);
 
 const strengthClass = computed(() => {
-  if (passwordStrength.value <= 2) return 'weak'
-  if (passwordStrength.value <= 3) return 'medium'
-  return 'strong'
-})
+  if (passwordStrength.value <= 2) return 'weak';
+  if (passwordStrength.value <= 3) return 'medium';
+  return 'strong';
+});
 
 const strengthText = computed(() => {
-  if (passwordStrength.value <= 2) return 'Weak password'
-  if (passwordStrength.value <= 3) return 'Medium strength'
-  return 'Strong password'
-})
+  if (passwordStrength.value <= 2) return 'Weak password';
+  if (passwordStrength.value <= 3) return 'Medium strength';
+  return 'Strong password';
+});
 
 const handleRegister = async () => {
   if (!form.agreeTerms) {
-    alert('You must agree to the Terms of Service and Privacy Policy')
-    return
-  }
-  
-  if (form.password !== form.confirmPassword) {
-    alert('Passwords do not match')
-    return
+    alert('You must agree to the Terms of Service and Privacy Policy');
+    return;
   }
 
-  loading.value = true
-  
+  if (form.password !== form.confirmPassword) {
+    alert('Passwords do not match');
+    return;
+  }
+
+  loading.value = true;
+
   try {
-    const result = await authStore.registerPM({
-      firstName: form.firstName,
-      surname: form.surname,
-      email: form.email,
-      phone: form.phone,
-      role: 'pm',
-      managerId: form.managerId,
-      password: form.password,
-      organisationName: form.organisationName,
-      inviteCode: form.inviteCode
-    })
-    
+    const response = await fetch('http://localhost:3001/api/auth/register/pm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        surname: form.surname,
+        email: form.email,
+        phone: form.phone,
+        managerId: form.managerId,
+        password: form.password,
+      }),
+    });
+
+    const result = await response.json();
+
     if (result.success) {
-      void router.push('/auth/login')
+      void router.push('/auth/login');
     } else {
-      alert('Registration failed: ' + (result.error || 'Unknown error'))
+      alert('Registration failed: ' + (result.error || 'Unknown error'));
     }
   } catch (error) {
-    console.error('Registration error:', error)
-    alert('Error: ' + String(error))
+    console.error('Registration error:', error);
+    alert('Error: ' + String(error));
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
@@ -413,7 +398,7 @@ const handleRegister = async () => {
 }
 
 .terms-link {
-  color: #C4F64F;
+  color: #c4f64f;
   text-decoration: none;
   font-weight: 500;
 }
@@ -423,7 +408,7 @@ const handleRegister = async () => {
 }
 
 .register-button {
-  background: linear-gradient(135deg, #C4F64F 0%, #9AE634 100%);
+  background: linear-gradient(135deg, #c4f64f 0%, #9ae634 100%);
   color: #1a1a2e;
   font-weight: 600;
   font-size: 1rem;

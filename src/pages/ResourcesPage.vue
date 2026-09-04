@@ -1,167 +1,155 @@
 <template>
-  <q-page class="q-pa-md text-black" style="height: 100vh; max-height: 100vh; min-height: 0 !important; display: flex; flex-direction: column; background-color: #f8f9fa;">
-    
+  <q-page class="q-pa-md" style="background-color: #f8f9fa">
     <!-- Header -->
-    <div class="row items-start justify-between q-mb-md" style="flex: 0 0 auto;">
+    <div class="row items-center justify-between q-mb-md">
       <div class="row items-center">
-        <q-avatar color="indigo-1" text-color="indigo" icon="o_groups" size="48px" class="q-mr-md" style="border-radius: 12px;" />
-        <div class="column">
+        <q-avatar color="indigo-1" text-color="indigo" icon="o_groups" size="48px" class="q-mr-md" />
+        <div>
           <div class="text-h5 text-weight-bold">Resources & Workload</div>
-          <div class="text-grey-7 text-caption">Monitor team capacity, workload, and resource availability</div>
+          <div class="text-grey-7 text-caption">Monitor team capacity and workload</div>
         </div>
       </div>
-      <div class="column items-end">
-        <div class="row items-center q-gutter-md q-mb-md">
-          <q-input v-model="searchQuery" outlined dense rounded bg-color="white" placeholder="Search resources, skills, projects..." style="width: 320px;" @update:model-value="onSearch">
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-          <q-avatar size="36px" class="cursor-pointer">
-            <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
-            <q-menu anchor="bottom right" self="top right">
-              <q-list style="min-width: 150px">
-                <q-item clickable v-close-popup to="/dashboard/profile">
-                  <q-item-section avatar><q-icon name="person" /></q-item-section>
-                  <q-item-section>Profile</q-item-section>
-                </q-item>
-                <q-separator />
-                <q-item clickable v-close-popup @click="logout">
-                  <q-item-section avatar><q-icon name="logout" color="red" /></q-item-section>
-                  <q-item-section class="text-red">Logout</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-avatar>
-        </div>
-        <div class="row q-gutter-sm">
-          <q-btn unelevated color="teal-6" icon="autorenew" label="Auto Schedule & Rebalance" no-caps class="rounded-borders" @click="handleRebalance" :loading="rebalancing" />
-          <q-btn unelevated color="indigo-5" icon="o_file_download" label="Export Report" no-caps class="rounded-borders" :loading="exporting" @click="exportReport" />
-        </div>
-      </div>
-    </div>
-    
-    <!-- Summary Stats -->
-    <div class="row q-gutter-x-lg q-mb-md" style="flex: 0 0 auto;">
-      <div class="row items-center">
-        <q-icon name="o_groups" color="indigo" size="20px" class="q-mr-xs" />
-        <div class="text-weight-bold q-mr-sm">{{ resourceStore.resources.length }}</div>
-        <div class="text-caption text-grey-7">Total Resources</div>
-      </div>
-      <div class="row items-center">
-        <q-icon name="o_warning_amber" color="red" size="20px" class="q-mr-xs" />
-        <div class="text-weight-bold text-red q-mr-sm">{{ overloadedCount }}</div>
-        <div class="text-caption text-grey-7">Overloaded (Cross-project)</div>
-      </div>
-      <div class="row items-center">
-        <q-icon name="o_schedule" color="orange" size="20px" class="q-mr-xs" />
-        <div class="text-weight-bold text-orange q-mr-sm">{{ avgUtilization }}%</div>
-        <div class="text-caption text-grey-7">Avg Utilization</div>
+      <div class="row q-gutter-sm">
+        <q-btn flat color="indigo" label="Refresh" @click="fetchEmployees" :loading="loading" />
       </div>
     </div>
 
-    <!-- Main Content Split -->
-    <div class="row q-col-gutter-md" style="flex: 1 1 0; min-height: 0;">
-      <!-- Main Column: Data Table -->
-      <div class="col-12" style="height: 100%; display: flex; flex-direction: column; min-height: 0;">
-        <ResourceWorkloadTable />
+    <!-- Error State -->
+    <div v-if="error" class="bg-red-1 q-pa-md rounded-borders q-mb-md">
+      <div class="text-red text-weight-bold">Error loading resources</div>
+      <div class="text-red-8">{{ error }}</div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-else-if="loading" class="flex flex-center q-pa-xl">
+      <q-spinner-dots size="40px" color="primary" />
+    </div>
+
+    <!-- Employee List -->
+    <div v-else-if="employees.length > 0">
+      <q-table
+        :rows="employees"
+        :columns="columns"
+        row-key="user_id"
+        flat
+        bordered
+        class="bg-white"
+        @row-click="openResourceDetail"
+      >
+        <template v-slot:body-cell-name="props">
+          <q-td :props="props">
+            <div class="row items-center">
+              <q-avatar size="32px" class="q-mr-sm">
+                <img :src="props.row.avatar_url || `https://i.pravatar.cc/150?img=${props.row.id}`" />
+              </q-avatar>
+              <div>
+                <div class="text-weight-bold">{{ props.row.first_name }} {{ props.row.last_name }}</div>
+                <div class="text-caption text-grey-7">{{ props.row.employee_code }}</div>
+              </div>
+            </div>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-utilization="props">
+          <q-td :props="props">
+            <div class="text-weight-bold" :class="getUtilizationColor(props.row.utilization)">
+              {{ props.row.utilization }}%
+            </div>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-status="props">
+          <q-td :props="props">
+            <q-badge :color="getStatusColor(props.row.workload_status)">
+              {{ formatStatus(props.row.workload_status) }}
+            </q-badge>
+          </q-td>
+        </template>
+      </q-table>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="flex flex-center  q-pa-xl text-grey-6">
+      <div class="text-center">
+        <q-icon name="person_off" size="64px" color="grey-4" class="q-mb-md" />
+        <div class="text-h6">No resources found</div>
       </div>
     </div>
 
+    <!-- Resource Detail Dialog -->
+    <ResourceDetailDialog
+      v-model="showResourceDialog"
+      :resource-id="selectedResourceId"
+      @reassigned="fetchEmployees"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { useAuthStore } from '../stores/authStore';
-import { useResourceStore } from '../stores/resourceStore';
-import ResourceWorkloadTable from '../components/ResourceWorkloadTable.vue';
+import { ref, onMounted } from 'vue';
+import ResourceDetailDialog from '../components/ResourceDetailDialog.vue';
 
-const router = useRouter();
-const authStore = useAuthStore();
-const resourceStore = useResourceStore();
-const $q = useQuasar();
+const employees = ref<any[]>([]);
+const loading = ref(false);
+const error = ref<string | null>(null);
+const showResourceDialog = ref(false);
+const selectedResourceId = ref<number>(0);
 
-const searchQuery = ref('');
-const rebalancing = ref(false);
-const exporting = ref(false);
+const columns = [
+  { name: 'name', label: 'Employee', field: 'first_name', align: 'left' as const, sortable: true },
+  { name: 'role', label: 'Role', field: 'role_name', align: 'left' as const, sortable: true },
+  { name: 'utilization', label: 'Utilization', field: 'utilization', align: 'center' as const, sortable: true, format: (val: number) => `${Math.round(val)}%` },
+  { name: 'tasks', label: 'Active Tasks', field: 'active_task_count', align: 'center' as const, sortable: true },
+  { name: 'hours', label: 'Weekly Hours', field: 'weekly_required_hours', align: 'center' as const, sortable: true, format: (val: number) => `${Math.round(val)}h` },
+  { name: 'status', label: 'Status', field: 'workload_status', align: 'center' as const, sortable: true },
+];
 
-const handleRebalance = async () => {
-  rebalancing.value = true;
+const fetchEmployees = async () => {
+  loading.value = true;
+  error.value = null;
   try {
-    const res = await resourceStore.rebalanceWorkloads();
-    $q.notify({
-      type: 'positive',
-      message: `Successfully rebalanced workloads. ${res.assignedCount || 0} tasks re-assigned.`
+    const response = await fetch('http://localhost:3001/api/pm/resources', {
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
+    const data = await response.json();
+
+    if (data.success) {
+      employees.value = data.resources;
+    } else {
+      error.value = data.error || 'Failed to load resources';
+    }
   } catch (err: any) {
-    $q.notify({
-      type: 'negative',
-      message: err.message || 'Error rebalancing workloads'
-    });
+    error.value = err.message || 'Network error';
   } finally {
-    rebalancing.value = false;
+    loading.value = false;
   }
+};
+
+const getUtilizationColor = (utilization: number) => {
+  if (utilization >= 100) return 'text-red';
+  if (utilization >= 85) return 'text-orange';
+  if (utilization < 50) return 'text-blue';
+  return 'text-green';
+};
+
+const getStatusColor = (status: string) => {
+  if (status === 'overloaded') return 'red';
+  return 'green';
+};
+
+const formatStatus = (status: string) => {
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Normal';
+};
+
+const openResourceDetail = (evt: any, row: any) => {
+  selectedResourceId.value = row.user_id;
+  showResourceDialog.value = true;
 };
 
 onMounted(() => {
-  resourceStore.fetchResources();
-  resourceStore.fetchConflicts();
-  resourceStore.fetchAvailability();
-});
-
-const onSearch = () => {
-  resourceStore.fetchResources(searchQuery.value);
-};
-
-const logout = () => {
-  authStore.logout();
-  router.push('/auth/login');
-};
-
-const csvCell = (value: unknown) => {
-  const text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value as string | number | boolean);
-  return `"${text.replace(/"/g, '""')}"`;
-};
-const exportReport = () => {
-  exporting.value = true;
-  try {
-    const rows = resourceStore.resources.map((resource: any) => [
-      `${resource.first_name || ''} ${resource.last_name || ''}`.trim(),
-      resource.email,
-      resource.role_name,
-      resource.utilization,
-      resource.active_task_count,
-      resource.max_hours_per_week,
-      resource.weekly_required_hours
-    ]);
-    const csv = [
-      ['Resource', 'Email', 'Role', 'Utilization (%)', 'Active Tasks', 'Max Weekly Hours', 'Required Weekly Hours'],
-      ...rows
-    ].map(row => row.map(csvCell).join(',')).join('\r\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `tasky-resource-workload-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    $q.notify({ type: 'positive', message: 'Resource report exported' });
-  } finally {
-    exporting.value = false;
-  }
-};
-
-const overloadedCount = computed(() => {
-  return resourceStore.overloadedResources.length;
-});
-
-const avgUtilization = computed(() => {
-  if (resourceStore.resources.length === 0) return 0;
-  const total = resourceStore.resources.reduce((sum: number, r: any) => sum + (r.utilization || 0), 0);
-  return Math.round(total / resourceStore.resources.length);
+  fetchEmployees();
 });
 </script>
 
@@ -171,13 +159,13 @@ const avgUtilization = computed(() => {
   width: 6px;
 }
 .col-4::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 .col-4::-webkit-scrollbar-thumb {
-  background: #cbd5e1; 
+  background: #cbd5e1;
   border-radius: 4px;
 }
 .col-4::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; 
+  background: #94a3b8;
 }
 </style>

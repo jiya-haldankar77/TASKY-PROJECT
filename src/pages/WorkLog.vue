@@ -11,7 +11,9 @@
         <q-icon name="warning" color="orange" size="32px" class="q-mr-md" />
         <div>
           <div class="text-h6 text-weight-bold text-orange">Daily Update Pending</div>
-          <div class="text-caption">You missed your daily work log entry yesterday. Please submit your update.</div>
+          <div class="text-caption">
+            You missed your daily work log entry yesterday. Please submit your update.
+          </div>
         </div>
         <q-space />
         <q-btn color="orange" label="Submit Now" @click="showCreateLogDialog = true" />
@@ -40,18 +42,23 @@
         <q-list separator>
           <q-item v-for="log in filteredWorkLogs" :key="log.id">
             <q-item-section avatar>
-              <q-icon :name="getLogStatusIcon(log.status)" :color="getLogStatusColor(log.status)" size="32px" />
+              <q-icon
+                :name="getLogStatusIcon(log.status)"
+                :color="getLogStatusColor(log.status)"
+                size="32px"
+              />
             </q-item-section>
             <q-item-section>
-              <q-item-label>{{ getTaskById(log.taskId)?.title }}</q-item-label>
+              <q-item-label>{{ getTaskById(log.task_id)?.title }}</q-item-label>
               <q-item-label caption>
-                {{ getProjectById(getTaskById(log.taskId)?.projectId || '')?.name }} • {{ log.date }}
+                {{ getProjectById(getTaskById(log.task_id)?.project_id || '')?.name }} •
+                {{ log.log_date }}
               </q-item-label>
               <div class="text-caption q-mt-xs">
-                <strong>Work Completed:</strong> {{ log.workCompleted }}
+                <strong>Work Completed:</strong> {{ log.work_completed }}
               </div>
-              <div v-if="log.remainingWork" class="text-caption">
-                <strong>Remaining:</strong> {{ log.remainingWork }}
+              <div v-if="log.remaining_work" class="text-caption">
+                <strong>Remaining:</strong> {{ log.remaining_work }}
               </div>
               <div v-if="log.comments" class="text-caption text-grey-6 q-mt-xs">
                 {{ log.comments }}
@@ -62,7 +69,7 @@
                 <q-badge :color="getLogStatusColor(log.status)" class="text-capitalize q-mb-xs">
                   {{ log.status.replace('-', ' ') }}
                 </q-badge>
-                <div class="text-caption">{{ log.hoursSpent }}h</div>
+                <div class="text-caption">{{ log.hours_spent }}h</div>
               </div>
             </q-item-section>
           </q-item>
@@ -91,7 +98,7 @@
               outlined
               type="date"
               class="q-mb-md"
-              :rules="[val => !!val || 'Date is required']"
+              :rules="[(val) => !!val || 'Date is required']"
             />
             <q-select
               v-model="newLog.taskId"
@@ -101,18 +108,32 @@
               emit-value
               map-options
               class="q-mb-md"
-              :rules="[val => !!val || 'Task is required']"
+              :rules="[(val) => !!val || 'Task is required']"
             >
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section avatar>
-                    <q-avatar :style="{ backgroundColor: getProjectById(getTaskById(scope.opt.value)?.projectId || '')?.color }" size="24px" text-color="white">
-                      {{ getProjectById(getTaskById(scope.opt.value)?.projectId || '')?.name.charAt(0) }}
+                    <q-avatar
+                      :style="{
+                        backgroundColor: getProjectById(
+                          getTaskById(scope.opt.value)?.project_id || '',
+                        )?.color,
+                      }"
+                      size="24px"
+                      text-color="white"
+                    >
+                      {{
+                        getProjectById(getTaskById(scope.opt.value)?.project_id || '')?.name.charAt(
+                          0,
+                        )
+                      }}
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>{{ scope.opt.label }}</q-item-label>
-                    <q-item-label caption>{{ getProjectById(getTaskById(scope.opt.value)?.projectId || '')?.name }}</q-item-label>
+                    <q-item-label caption>{{
+                      getProjectById(getTaskById(scope.opt.value)?.project_id || '')?.name
+                    }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </template>
@@ -123,7 +144,7 @@
               :options="statusOptions"
               outlined
               class="q-mb-md"
-              :rules="[val => !!val || 'Status is required']"
+              :rules="[(val) => !!val || 'Status is required']"
             />
             <q-input
               v-model.number="newLog.hoursSpent"
@@ -131,7 +152,7 @@
               outlined
               type="number"
               class="q-mb-md"
-              :rules="[val => !!val && val > 0 || 'Hours must be greater than 0']"
+              :rules="[(val) => (!!val && val > 0) || 'Hours must be greater than 0']"
             />
             <q-input
               v-model="newLog.workCompleted"
@@ -140,7 +161,7 @@
               type="textarea"
               rows="2"
               class="q-mb-md"
-              :rules="[val => !!val || 'Please describe completed work']"
+              :rules="[(val) => !!val || 'Please describe completed work']"
             />
             <q-input
               v-model="newLog.remainingWork"
@@ -169,111 +190,188 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTaskStore } from '@/stores/taskStore'
+import { ref, computed, onMounted } from 'vue';
+import { useAuthStore } from '../stores/authStore';
 
-const taskStore = useTaskStore()
+const authStore = useAuthStore();
 
-const showCreateLogDialog = ref(false)
-const selectedTaskFilter = ref<string | null>(null)
+const showCreateLogDialog = ref(false);
+const selectedTaskFilter = ref<number | string | null>(null);
+const loading = ref(false);
+
+const myTasks = ref<any[]>([]);
+const projects = ref<any[]>([]);
+const workLogs = ref<any[]>([]);
+const analytics = ref<any>(null);
 
 const newLog = ref({
   date: new Date().toISOString().split('T')[0],
-  taskId: '',
+  taskId: null as number | null,
   status: 'in-progress',
-  hoursSpent: 4,
+  hoursSpent: 0,
   workCompleted: '',
   remainingWork: '',
-  comments: ''
-})
+  comments: '',
+});
 
-const statusOptions = ['completed', 'partially-completed', 'in-progress']
+const statusOptions = ['completed', 'partially-completed', 'in-progress'];
 
-const currentEmployee = computed(() => taskStore.currentEmployee)
-const analytics = computed(() => taskStore.employeeAnalytics)
+onMounted(async () => {
+  await fetchFromDatabase();
+});
 
-const myTasks = computed(() => {
-  if (!currentEmployee.value) return []
-  return taskStore.getTasksByEmployee(currentEmployee.value.id)
-})
+async function fetchFromDatabase() {
+  if (!authStore.user?.id) return;
 
-const taskOptions = computed(() =>
-  myTasks.value.map(t => ({ label: t.title, value: t.id }))
-)
+  loading.value = true;
+  try {
+    const tasksResponse = await fetch(
+      `http://localhost:3001/api/tasks/employee/${authStore.user.id}`,
+    );
+    const tasksData = await tasksResponse.json();
+    if (tasksData.success) {
+      myTasks.value = tasksData.tasks;
+    }
 
-const myWorkLogs = computed(() => {
-  if (!currentEmployee.value) return []
-  return taskStore.getWorkLogsByEmployee(currentEmployee.value.id)
-})
+    const projectsResponse = await fetch('http://localhost:3001/api/pm/projects');
+    const projectsData = await projectsResponse.json();
+    if (projectsData.success) {
+      projects.value = projectsData.projects;
+    }
 
-const filteredWorkLogs = computed(() => {
-  let logs = myWorkLogs.value
-  if (selectedTaskFilter.value) {
-    logs = logs.filter(log => log.taskId === selectedTaskFilter.value)
+    const logsResponse = await fetch(
+      `http://localhost:3001/api/employee/work-logs/${authStore.user.id}`,
+    );
+    const logsData = await logsResponse.json();
+    if (logsData.success) {
+      workLogs.value = logsData.logs || [];
+    }
+
+    // Calculate analytics
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const hasLogToday = workLogs.value.some(
+      (l: any) => new Date(l.log_date).toDateString() === today.toDateString(),
+    );
+    const hasLogYesterday = workLogs.value.some(
+      (l: any) => new Date(l.log_date).toDateString() === yesterday.toDateString(),
+    );
+
+    analytics.value = {
+      dailyUpdatePending: !hasLogYesterday && !hasLogToday,
+    };
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    loading.value = false;
   }
-  return logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-})
-
-function getTaskById(id: string) {
-  return taskStore.getTaskById(id)
 }
 
-function getProjectById(id: string) {
-  return taskStore.getProjectById(id)
+const taskOptions = computed(() => myTasks.value.map((t) => ({ label: t.title, value: t.id })));
+
+const filteredWorkLogs = computed(() => {
+  let logs = workLogs.value;
+  if (selectedTaskFilter.value) {
+    logs = logs.filter((log) => log.task_id === selectedTaskFilter.value);
+  }
+  return logs.sort(
+    (a: any, b: any) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime(),
+  );
+});
+
+function getTaskById(id: number | string) {
+  return myTasks.value.find((t: any) => t.id === id);
+}
+
+function getProjectById(id: number | string) {
+  return projects.value.find((p: any) => p.id === id);
 }
 
 function getLogStatusIcon(status: string) {
   const icons: Record<string, string> = {
     completed: 'check_circle',
     'partially-completed': 'remove_circle',
-    'in-progress': 'pending'
-  }
-  return icons[status] || 'circle'
+    'in-progress': 'pending',
+  };
+  return icons[status] || 'circle';
 }
 
 function getLogStatusColor(status: string) {
   const colors: Record<string, string> = {
     completed: 'green',
     'partially-completed': 'orange',
-    'in-progress': 'blue'
-  }
-  return colors[status] || 'grey'
+    'in-progress': 'blue',
+  };
+  return colors[status] || 'grey';
 }
 
-function submitWorkLog() {
-  if (!newLog.value.taskId || !newLog.value.date || !currentEmployee.value) return
+async function submitWorkLog() {
+  if (!newLog.value.taskId || !newLog.value.date || !authStore.user?.id) return;
 
-  taskStore.addWorkLog({
-    taskId: newLog.value.taskId,
-    employeeId: currentEmployee.value.id,
-    date: newLog.value.date,
-    status: newLog.value.status,
-    workCompleted: newLog.value.workCompleted,
-    remainingWork: newLog.value.remainingWork,
-    comments: newLog.value.comments,
-    hoursSpent: newLog.value.hoursSpent
-  })
+  try {
+    const response = await fetch('http://localhost:3001/api/employee/work-logs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({
+        task_id: newLog.value.taskId,
+        user_id: authStore.user.id,
+        log_date: newLog.value.date,
+        status: newLog.value.status,
+        work_completed: newLog.value.workCompleted,
+        remaining_work: newLog.value.remainingWork,
+        comments: newLog.value.comments,
+        hours_spent: newLog.value.hoursSpent,
+      }),
+    });
 
-  // Update task progress based on work log status
-  const task = getTaskById(newLog.value.taskId)
-  if (task) {
-    const progressIncrement = 
-      newLog.value.status === 'completed' ? 25 :
-      newLog.value.status === 'partially-completed' ? 10 : 5
+    const data = await response.json();
+    if (data.success) {
+      // Update task progress based on work log status
+      const task = getTaskById(newLog.value.taskId);
+      if (task) {
+        const progressIncrement =
+          newLog.value.status === 'completed'
+            ? 25
+            : newLog.value.status === 'partially-completed'
+              ? 10
+              : 5;
 
-    const newProgress = Math.min(task.progress + progressIncrement, 100)
-    taskStore.updateTask(task.id, { progress: newProgress })
-  }
+        const newProgress = Math.min((task.progress || 0) + progressIncrement, 100);
 
-  showCreateLogDialog.value = false
-  newLog.value = {
-    date: new Date().toISOString().split('T')[0],
-    taskId: '',
-    status: 'in-progress',
-    hoursSpent: 4,
-    workCompleted: '',
-    remainingWork: '',
-    comments: ''
+        await fetch(`http://localhost:3001/api/employee/tasks/${task.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({
+            progress: newProgress,
+            status: newProgress === 100 ? 'completed' : task.status,
+            hours_spent: newLog.value.hoursSpent,
+          }),
+        });
+      }
+
+      await fetchFromDatabase();
+      showCreateLogDialog.value = false;
+      newLog.value = {
+        date: new Date().toISOString().split('T')[0],
+        taskId: null,
+        status: 'in-progress',
+        hoursSpent: 4,
+        workCompleted: '',
+        remainingWork: '',
+        comments: '',
+      };
+    }
+  } catch (error) {
+    console.error('Error submitting work log:', error);
   }
 }
 </script>

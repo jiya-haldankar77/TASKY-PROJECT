@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useAuthStore } from './authStore';
 
 export const useOrgStore = defineStore('org', {
   state: () => ({
@@ -13,10 +12,9 @@ export const useOrgStore = defineStore('org', {
 
   actions: {
     getHeaders() {
-      const auth = useAuthStore();
-      return { 
+      // Authentication removed for testing
+      return {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}` 
       };
     },
 
@@ -44,9 +42,22 @@ export const useOrgStore = defineStore('org', {
           headers: this.getHeaders(),
         });
         const data = await response.json();
-        if (data.success) this.members = data.members;
+        console.log('OrgStore fetchMembers response:', data);
+        if (data.success && data.members) {
+          this.members = data.members;
+        } else {
+          // Fallback to /api/users
+          const fallbackRes = await fetch('http://localhost:3001/api/users', {
+            headers: this.getHeaders(),
+          });
+          const fallbackData = await fallbackRes.json();
+          if (fallbackData.success) {
+            this.members = fallbackData.users || [];
+          }
+        }
       } catch (err: any) {
         this.error = err.message;
+        console.error('OrgStore fetchMembers error:', err);
       }
     },
 
@@ -92,12 +103,12 @@ export const useOrgStore = defineStore('org', {
           if (this.activeInviteCode && this.activeInviteCode.id == id) {
             this.activeInviteCode = null;
           }
-          const idx = this.inviteCodes.findIndex(c => c.id == id);
+          const idx = this.inviteCodes.findIndex((c) => c.id == id);
           if (idx !== -1) this.inviteCodes[idx].is_active = 0;
         }
       } catch (err: any) {
         console.error(err);
       }
-    }
+    },
   },
 });

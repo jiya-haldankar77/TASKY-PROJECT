@@ -1,13 +1,31 @@
 <template>
-  <q-page class="q-pa-md text-black" style="height: 100vh; max-height: 100vh; min-height: 0 !important; overflow: hidden; display: flex; flex-direction: column;">
+  <q-page
+    class="q-pa-md text-black"
+    style="
+      height: 100vh;
+      max-height: 100vh;
+      min-height: 0 !important;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    "
+  >
     <!-- Header -->
-    <div class="row items-center justify-between q-mb-md" style="flex: 0 0 auto;">
+    <div class="row items-center justify-between q-mb-md" style="flex: 0 0 auto">
       <div class="column">
         <div class="text-h5 text-weight-bold">Command Center 👋</div>
         <div class="text-grey-7 text-caption">Overview of what needs your attention today</div>
       </div>
       <div class="row items-center q-gutter-sm">
-        <q-input v-model="searchQuery" outlined dense rounded bg-color="white" placeholder="Search attention items & logs..." style="width: 250px;">
+        <q-input
+          v-model="searchQuery"
+          outlined
+          dense
+          rounded
+          bg-color="white"
+          placeholder="Search attention items & logs..."
+          style="width: 250px"
+        >
           <template v-slot:prepend>
             <q-icon name="search" />
           </template>
@@ -32,222 +50,477 @@
     </div>
 
     <!-- Summary Cards -->
-    <div class="row q-col-gutter-md q-mb-md" style="flex: 0 0 auto;">
+    <div class="row q-col-gutter-md q-mb-md" style="flex: 0 0 auto">
       <div class="col-3">
-        <StatCard title="At Risk Projects" :value="dashboardStore.stats.atRiskProjects.toString()" color="red" icon="o_warning" caption="Needs immediate attention" />
+        <StatCard
+          title="At Risk Projects"
+          :value="String(dashboardStore.stats?.atRiskProjects ?? 0)"
+          color="red"
+          icon="o_warning"
+          caption="Needs immediate attention"
+        />
       </div>
       <div class="col-3">
-        <StatCard title="Overloaded Resources" :value="dashboardStore.stats.overloadedResources.toString()" color="orange" icon="o_groups" caption="Working across multiple projects" />
+        <StatCard
+          title="Overloaded Resources"
+          :value="String(dashboardStore.stats?.overloadedResources ?? 0)"
+          color="orange"
+          icon="o_groups"
+          caption="Working across multiple projects"
+        />
       </div>
       <div class="col-3">
-        <StatCard title="Overdue Tasks" :value="dashboardStore.stats.overdueTasks.toString()" color="deep-orange" icon="o_schedule" caption="Past deadline" />
+        <StatCard
+          title="Overdue Tasks"
+          :value="String(dashboardStore.stats?.overdueTasks ?? 0)"
+          color="deep-orange"
+          icon="o_schedule"
+          caption="Past deadline"
+        />
       </div>
       <div class="col-3">
-        <StatCard title="Pending Reviews" :value="dashboardStore.stats.pendingReviews.toString()" color="blue" icon="o_rate_review" caption="Daily logs to review" />
+        <StatCard
+          title="Pending Reviews"
+          :value="String(pendingReviewsCount)"
+          color="blue"
+          icon="o_rate_review"
+          caption="Tasks awaiting final review"
+        />
       </div>
     </div>
 
-    <!-- Main Grid Rows -->
-    <div class="row q-col-gutter-md" style="flex: 1 1 0; min-height: 0;">
-       
-       <!-- Needs Attention Column (Left) -->
-       <div class="col-6" style="height: 100%; display: flex; flex-direction: column;">
-         <q-card class="full-height flex column">
-           <q-card-section class="bg-red-1 text-red-9 q-pb-sm">
-             <div class="row items-center justify-between">
-               <div class="row items-center">
-                 <q-icon name="warning" size="24px" class="q-mr-sm" />
-                 <div class="text-h6 text-weight-bold">Needs Attention</div>
-               </div>
-               <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
-             </div>
-             <div class="text-caption">Critical items that require immediate PM action</div>
-           </q-card-section>
-           
-           <q-card-section class="q-pt-none q-px-md q-pb-md" style="flex: 1 1 0; overflow-y: auto;">
-             <q-list separator v-if="hasAttentionItems">
-               <!-- Delayed Projects -->
-               <template v-for="project in filteredAttentionItems.delayedProjects" :key="'proj-'+project.id">
-                 <q-item class="q-py-md">
-                   <q-item-section avatar>
-                     <q-avatar color="red-1" text-color="red" icon="folder" />
-                   </q-item-section>
-                   <q-item-section>
-                     <q-item-label class="text-weight-bold">{{ project.name }} (Project)</q-item-label>
-                     <q-item-label caption>Project is delayed by {{ project.days_delayed }} days. {{ project.overdue_tasks }} overdue task(s).</q-item-label>
-                   </q-item-section>
-                   <q-item-section side>
-                     <q-btn unelevated color="red" label="Manage" size="sm" :to="`/dashboard/projects?search=${encodeURIComponent(project.name)}`" />
-                   </q-item-section>
-                 </q-item>
-               </template>
-               
-               <!-- Overloaded Resources -->
-               <template v-for="resource in filteredAttentionItems.overloadedResources" :key="'res-'+resource.id">
-                 <q-item class="q-py-md">
-                   <q-item-section avatar>
-                     <q-avatar>
-                       <img :src="resource.avatar || `https://i.pravatar.cc/150?img=${resource.id}`" />
-                     </q-avatar>
-                   </q-item-section>
-                   <q-item-section>
-                     <q-item-label class="text-weight-bold">{{ resource.first_name }} {{ resource.last_name }} ({{ resource.role_name }})</q-item-label>
-                     <q-item-label caption>Overloaded ({{ resource.utilization }}% capacity) across {{ resource.project_count }} projects.</q-item-label>
-                   </q-item-section>
-                   <q-item-section side>
-                     <q-btn unelevated color="orange" label="Reassign" size="sm" :to="`/dashboard/resources?search=${encodeURIComponent(resource.employee_code)}`" />
-                   </q-item-section>
-                 </q-item>
-               </template>
+    <!-- Tabs -->
+    <q-tabs
+      v-model="activeTab"
+      dense
+      class="text-grey-7 q-mb-md"
+      active-color="primary"
+      indicator-color="primary"
+      align="left"
+      style="flex: 0 0 auto"
+    >
+      <q-tab name="overview" label="Overview" icon="dashboard" />
+      <q-tab name="completed" label="Completed" icon="check_circle" />
+    </q-tabs>
 
-               <!-- Overdue Tasks -->
-               <template v-for="task in filteredAttentionItems.overdueTasks" :key="'task-'+task.id">
-                 <q-item class="q-py-md">
-                   <q-item-section avatar>
-                     <q-avatar color="deep-orange-1" text-color="deep-orange" icon="task" />
-                   </q-item-section>
-                   <q-item-section>
-                     <q-item-label class="text-weight-bold">{{ task.title }} (Task)</q-item-label>
-                     <q-item-label caption>Overdue by {{ task.days_overdue }} days. Blocks {{ task.blocking_count }} dependent tasks in {{ task.project_name }}.</q-item-label>
-                   </q-item-section>
-                   <q-item-section side>
-                     <q-btn unelevated outline color="deep-orange" label="View Task" size="sm" :to="`/dashboard/tasks?search=${encodeURIComponent(task.title)}`" />
-                   </q-item-section>
-                 </q-item>
-               </template>
-             </q-list>
-             
-             <div v-else-if="!dashboardStore.loading" class="text-center q-pa-xl text-grey-6">
-               <q-icon name="check_circle" size="48px" class="q-mb-sm text-green-4" />
-               <div class="text-h6">All clear!</div>
-               <div>No items need your immediate attention.</div>
-             </div>
-           </q-card-section>
-         </q-card>
-       </div>
+    <q-tab-panels
+      v-model="activeTab"
+      animated
+      class="transparent"
+      style="flex: 1 1 0; min-height: 0"
+    >
+      <!-- Overview Tab -->
+      <q-tab-panel name="overview" class="q-pa-none">
+        <div class="row q-col-gutter-md" style="height: 100%; min-height: 0">
+          <!-- Needs Attention Column (Left) -->
+          <div class="col-6" style="height: 100%; display: flex; flex-direction: column">
+            <q-card class="full-height flex column">
+              <q-card-section class="bg-red-1 text-red-9 q-pb-sm">
+                <div class="row items-center justify-between">
+                  <div class="row items-center">
+                    <q-icon name="warning" size="24px" class="q-mr-sm" />
+                    <div class="text-h6 text-weight-bold">Needs Attention</div>
+                  </div>
+                  <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
+                </div>
+                <div class="text-caption">Critical items that require immediate PM action</div>
+              </q-card-section>
 
-       <!-- Daily Progress Review Column (Right) -->
-       <div class="col-6" style="height: 100%; display: flex; flex-direction: column;">
-         <q-card class="full-height flex column">
-           <q-card-section class="bg-blue-1 text-blue-9 q-pb-sm">
-             <div class="row items-center justify-between">
-               <div class="row items-center">
-                 <q-icon name="history" size="24px" class="q-mr-sm" />
-                 <div class="text-h6 text-weight-bold">Daily Progress Review</div>
-               </div>
-               <q-btn flat dense icon="refresh" color="blue-9" @click="dashboardStore.fetchDailyProgress()" :loading="dashboardStore.loading" />
-             </div>
-             <div class="text-caption">Latest updates from your team across all projects</div>
-           </q-card-section>
-           
-           <q-card-section class="q-pt-none q-px-md q-pb-md bg-grey-1" style="flex: 1 1 0; overflow-y: auto;">
-             <template v-if="filteredDailyLogs.length > 0">
-               <q-card v-for="log in filteredDailyLogs" :key="log.id" flat bordered class="q-mt-md bg-white">
-                 <q-card-section>
-                   <div class="row items-center justify-between q-mb-sm">
-                     <div class="row items-center">
-                       <q-avatar size="24px" class="q-mr-sm">
-                         <img :src="log.avatar || `https://i.pravatar.cc/150?img=${log.user_id}`" />
-                       </q-avatar>
-                       <span class="text-weight-medium">{{ log.first_name }} {{ log.last_name }}</span>
-                       <span class="text-grey-7 q-ml-sm text-caption">logged {{ log.hours_spent }}h on</span>
-                     </div>
-                     <q-badge :color="getStatusColor(log.status)">
-                       {{ log.status === 'blocked' ? 'In Progress (Blocked)' : log.status }}
-                     </q-badge>
-                   </div>
-                   <router-link :to="`/dashboard/tasks?search=${encodeURIComponent(log.task_title)}`" class="text-subtitle2 q-mb-xs text-indigo cursor-pointer text-weight-bold" style="text-decoration: none;">
-                     {{ log.task_title }}
-                     <q-tooltip>View Task Details</q-tooltip>
-                   </router-link>
-                   <div class="text-caption text-grey-8 bg-grey-2 q-pa-sm rounded-borders q-mt-xs" :class="{ 'border-left-orange': log.status === 'blocked' }">
-                     "{{ log.work_completed }}"
-                     <div v-if="log.remaining_work" class="q-mt-xs text-italic text-grey-6">Remaining: {{ log.remaining_work }}</div>
-                     <div v-if="log.comments" class="q-mt-xs text-weight-medium">Note: {{ log.comments }}</div>
-                   </div>
-                   <div class="row justify-between items-center q-mt-sm">
-                     <router-link :to="`/dashboard/projects?search=${encodeURIComponent(log.project_name)}`" class="text-caption text-indigo cursor-pointer" style="text-decoration: none; font-weight: 500;">
-                       <q-icon name="folder" class="q-mr-xs" size="14px"/>{{ log.project_name }}
-                       <q-tooltip>View Project Details</q-tooltip>
-                     </router-link>
-                     <q-btn v-if="log.status === 'blocked'" flat color="primary" label="Acknowledge & Unblock" size="sm" :to="`/dashboard/tasks?search=${encodeURIComponent(log.task_title)}`" />
-                   </div>
-                 </q-card-section>
-               </q-card>
-             </template>
-             <div v-else-if="!dashboardStore.loading" class="text-center q-pa-xl text-grey-6">
-               <q-icon name="history_toggle_off" size="48px" class="q-mb-sm" />
-               <div class="text-h6">No logs today</div>
-               <div>Team hasn't submitted daily logs yet.</div>
-             </div>
-           </q-card-section>
-         </q-card>
-       </div>
-    </div>
+              <q-card-section
+                class="q-pt-none q-px-md q-pb-md"
+                style="flex: 1 1 0; overflow-y: auto"
+              >
+                <q-list separator v-if="hasAttentionItems">
+                  <!-- Delayed Projects -->
+                  <template
+                    v-for="project in filteredAttentionItems.delayedProjects"
+                    :key="'proj-' + project.id"
+                  >
+                    <q-item class="q-py-md">
+                      <q-item-section avatar>
+                        <q-avatar color="red-1" text-color="red" icon="folder" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-bold"
+                          >{{ project.name }} (Project)</q-item-label
+                        >
+                        <q-item-label caption
+                          >Project is delayed by {{ project.days_delayed }} days.
+                          {{ project.overdue_tasks }} overdue task(s).</q-item-label
+                        >
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn
+                          unelevated
+                          color="red"
+                          label="Manage"
+                          size="sm"
+                          :to="`/dashboard/projects?search=${encodeURIComponent(project.name)}`"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </template>
+
+                  <!-- Overloaded Resources -->
+                  <template
+                    v-for="resource in filteredAttentionItems.overloadedResources"
+                    :key="'res-' + resource.id"
+                  >
+                    <q-item class="q-py-md">
+                      <q-item-section avatar>
+                        <q-avatar>
+                          <img
+                            :src="resource.avatar || `https://i.pravatar.cc/150?img=${resource.id}`"
+                          />
+                        </q-avatar>
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-bold"
+                          >{{ resource.first_name }} {{ resource.last_name }} ({{
+                            resource.role_name
+                          }})</q-item-label
+                        >
+                        <q-item-label caption
+                          >Overloaded ({{ resource.utilization }}% capacity) across
+                          {{ resource.project_count }} projects.</q-item-label
+                        >
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn
+                          unelevated
+                          color="orange"
+                          label="Reassign"
+                          size="sm"
+                          :to="`/dashboard/resources?search=${encodeURIComponent(resource.employee_code)}`"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </template>
+
+                  <!-- Overdue Tasks -->
+                  <template
+                    v-for="task in filteredAttentionItems.overdueTasks"
+                    :key="'task-' + task.id"
+                  >
+                    <q-item class="q-py-md">
+                      <q-item-section avatar>
+                        <q-avatar color="deep-orange-1" text-color="deep-orange" icon="task" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-bold"
+                          >{{ task.title }} (Task)</q-item-label
+                        >
+                        <q-item-label caption
+                          >Overdue by {{ task.days_overdue }} days. Blocks
+                          {{ task.blocking_count }} dependent tasks in
+                          {{ task.project_name }}.</q-item-label
+                        >
+                      </q-item-section>
+                      <q-item-section side>
+                        <q-btn
+                          unelevated
+                          outline
+                          color="deep-orange"
+                          label="View Task"
+                          size="sm"
+                          :to="`/dashboard/tasks?search=${encodeURIComponent(task.title)}`"
+                        />
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-list>
+
+                <div v-else-if="!dashboardStore.loading" class="text-center q-pa-xl text-grey-6">
+                  <q-icon name="check_circle" size="48px" class="q-mb-sm text-green-4" />
+                  <div class="text-h6">All clear!</div>
+                  <div>No items need your immediate attention.</div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <!-- Team Members Column (Right) -->
+          <div class="col-6" style="height: 100%; display: flex; flex-direction: column">
+            <q-card class="full-height flex column">
+              <q-card-section class="bg-green-1 text-green-9 q-pb-sm">
+                <div class="row items-center justify-between">
+                  <div class="row items-center">
+                    <q-icon name="groups" size="24px" class="q-mr-sm" />
+                    <div class="text-h6 text-weight-bold">Team Members</div>
+                  </div>
+                  <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
+                </div>
+                <div class="text-caption">All users in your organization</div>
+              </q-card-section>
+
+              <q-card-section
+                class="q-pt-none q-px-md q-pb-md"
+                style="flex: 1 1 0; overflow-y: auto"
+              >
+                <q-list separator v-if="dashboardStore.users.length > 0">
+                  <q-item
+                    v-for="user in dashboardStore.users"
+                    :key="user.id"
+                    class="q-py-md cursor-pointer"
+                    @click="showEmployeePerformance(user)"
+                  >
+                    <q-item-section avatar>
+                      <q-avatar>
+                        <img :src="user.avatar_url || `https://i.pravatar.cc/150?img=${user.id}`" />
+                      </q-avatar>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-weight-bold"
+                        >{{ user.first_name }} {{ user.last_name }}</q-item-label
+                      >
+                      <q-item-label caption
+                        >{{ user.employee_code }} - {{ user.role_name }}</q-item-label
+                      >
+                      <q-item-label caption v-if="user.email" class="text-grey-7">{{
+                        user.email
+                      }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-badge :color="user.access_level === 'manager' ? 'orange' : 'blue'">
+                        {{ user.access_level === 'manager' ? 'Manager' : 'Employee' }}
+                      </q-badge>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+
+                <div v-else-if="!dashboardStore.loading" class="text-center q-pa-xl text-grey-6">
+                  <q-icon name="person_off" size="48px" class="q-mb-sm" />
+                  <div class="text-h6">No users found</div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+      </q-tab-panel>
+
+      <!-- Completed Tab -->
+      <q-tab-panel name="completed" class="q-pa-none">
+        <q-card class="full-height">
+          <q-card-section class="bg-green-1 text-green-9 q-pb-sm">
+            <div class="row items-center justify-between">
+              <div class="row items-center">
+                <q-icon name="check_circle" size="24px" class="q-mr-sm" />
+                <div class="text-h6 text-weight-bold">Completed Tasks</div>
+              </div>
+              <q-spinner-dots v-if="loadingCompleted" size="24px" />
+            </div>
+            <div class="text-caption">All completed tasks - click to view review status</div>
+          </q-card-section>
+
+          <q-card-section class="q-pt-none q-px-md q-pb-md" style="max-height: calc(100vh - 300px); overflow-y: auto">
+            <q-list separator v-if="completedTasks.length > 0">
+              <q-item v-for="task in completedTasks" :key="task.id" class="q-py-md" clickable @click="showTaskDetail(task)">
+                <q-item-section avatar>
+                  <q-icon name="check_circle" color="green" size="32px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">{{ task.title }}</q-item-label>
+                  <q-item-label caption>Project: {{ task.project_name }}</q-item-label>
+                  <q-item-label caption>Assigned to: {{ task.assigned_first_name }} {{ task.assigned_last_name }}</q-item-label>
+                  <q-item-label caption>Progress: {{ task.progress }}%</q-item-label>
+                  <q-item-label caption v-if="task.review_status" class="text-purple-8 q-mt-xs">
+                    Review: {{ task.review_status }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <div class="column items-end">
+                    <q-badge :color="task.review_status === 'review-done' ? 'green' : 'orange'" :label="task.review_status || 'Pending Review'" />
+                    <div class="text-caption text-grey-6 q-mt-xs">
+                      {{ formatDate(task.completed_at) }}
+                    </div>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else-if="!loadingCompleted" class="text-center q-pa-xl text-grey-6">
+              <q-icon name="check_circle" size="48px" class="q-mb-sm text-green-4" />
+              <div class="text-h6">No completed tasks yet</div>
+              <div>Tasks will appear here after they are completed</div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </q-tab-panel>
+    </q-tab-panels>
+
+    <!-- Employee Performance Dialog -->
+    <!-- Temporarily disabled to debug blank page issue -->
+    <!-- <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" /> -->
+    <q-dialog v-model="showPerformanceDialog">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Employee Performance</div>
+          <div v-if="selectedEmployee">
+            {{ selectedEmployee.first_name }} {{ selectedEmployee.last_name }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Task Detail Dialog -->
+    <q-dialog v-model="showTaskDetailDialog">
+      <q-card style="min-width: 600px">
+        <q-card-section>
+          <div class="text-h6">Task Details</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-if="selectedTask">
+          <div class="q-mb-md">
+            <strong>Task:</strong> {{ selectedTask.title }}
+          </div>
+          <div class="q-mb-md">
+            <strong>Project:</strong> {{ selectedTask.project_name }}
+          </div>
+          <div class="q-mb-md">
+            <strong>Assigned to:</strong> {{ selectedTask.assigned_first_name }} {{ selectedTask.assigned_last_name }}
+          </div>
+          <div class="q-mb-md">
+            <strong>Progress:</strong> {{ selectedTask.progress }}%
+          </div>
+          <div class="q-mb-md">
+            <strong>Completed at:</strong> {{ formatDate(selectedTask.completed_at) }}
+          </div>
+          <q-separator class="q-my-md" />
+          <div class="text-subtitle2 q-mb-md">Review Status</div>
+          <div v-if="selectedTask.review_status === 'review-done'" class="q-mb-md">
+            <q-badge color="green" label="Review Completed" />
+            <div class="q-mt-sm">
+              <strong>Reviewed by:</strong> {{ selectedTask.reviewer_name || 'N/A' }}
+            </div>
+          </div>
+          <div v-else class="q-mb-md">
+            <q-badge color="orange" label="Pending Review" />
+            <div class="q-mt-sm text-grey-6">
+              Task is completed but not yet reviewed
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '../stores/authStore';
 import { useDashboardStore } from '../stores/dashboardStore';
 import StatCard from '../components/StatCard.vue';
-
-const router = useRouter();
+// import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue'; // Temporarily disabled
 const authStore = useAuthStore();
+const { logout } = authStore;
 const dashboardStore = useDashboardStore();
 
 const searchQuery = ref('');
+const selectedEmployee = ref<any>(null);
+const showPerformanceDialog = ref(false);
+const activeTab = ref('overview');
+const completedTasks = ref<any[]>([]);
+const loadingCompleted = ref(false);
+const selectedTask = ref<any>(null);
+const showTaskDetailDialog = ref(false);
 
 onMounted(() => {
+  console.log('Project Manager Dashboard mounted');
+  console.log('Auth store user:', authStore.currentUser);
+  console.log('Auth store token:', authStore.token);
+  console.log('Auth store authenticated:', authStore.isAuthenticated);
   dashboardStore.loadAll();
+  console.log('Users loaded:', dashboardStore.users);
+  // Pre-load completed reviews
+  fetchCompletedReviews();
 });
 
-const logout = () => {
-  authStore.logout();
-  router.push('/auth/login');
-};
+const pendingReviewsCount = computed(() => 0);
 
-const getStatusColor = (status: string) => {
-  if (status === 'completed') return 'green';
-  if (status === 'blocked') return 'orange';
-  if (status === 'in-progress') return 'blue';
-  return 'grey';
-};
-
-// Search filtering logic
 const filteredAttentionItems = computed(() => {
   const query = searchQuery.value.toLowerCase();
-  if (!query) return dashboardStore.attentionItems;
-
-  return {
-    delayedProjects: dashboardStore.attentionItems.delayedProjects?.filter((p: any) => p.name.toLowerCase().includes(query)) || [],
-    overloadedResources: dashboardStore.attentionItems.overloadedResources?.filter((r: any) => 
-      `${r.first_name} ${r.last_name}`.toLowerCase().includes(query) || r.role_name.toLowerCase().includes(query)
-    ) || [],
-    overdueTasks: dashboardStore.attentionItems.overdueTasks?.filter((t: any) => 
-      t.title.toLowerCase().includes(query) || t.project_name.toLowerCase().includes(query)
-    ) || [],
-  };
+  const delayedProjects = dashboardStore.attentionItems.delayedProjects.filter((p: any) =>
+    p.name.toLowerCase().includes(query),
+  );
+  const overloadedResources = dashboardStore.attentionItems.overloadedResources.filter(
+    (r: any) =>
+      `${r.first_name} ${r.last_name}`.toLowerCase().includes(query) ||
+      r.employee_code.toLowerCase().includes(query),
+  );
+  const overdueTasks = dashboardStore.attentionItems.overdueTasks.filter((t: any) =>
+    t.title.toLowerCase().includes(query),
+  );
+  return { delayedProjects, overloadedResources, overdueTasks };
 });
 
 const hasAttentionItems = computed(() => {
-  const items = filteredAttentionItems.value;
-  return (items.delayedProjects?.length > 0 || items.overloadedResources?.length > 0 || items.overdueTasks?.length > 0);
-});
-
-const filteredDailyLogs = computed(() => {
-  const query = searchQuery.value.toLowerCase();
-  if (!query) return dashboardStore.dailyProgress;
-  
-  return dashboardStore.dailyProgress.filter((log: any) => 
-    `${log.first_name} ${log.last_name}`.toLowerCase().includes(query) ||
-    log.task_title.toLowerCase().includes(query) ||
-    log.work_completed.toLowerCase().includes(query) ||
-    log.project_name.toLowerCase().includes(query)
+  return (
+    dashboardStore.attentionItems.delayedProjects.length > 0 ||
+    dashboardStore.attentionItems.overloadedResources.length > 0 ||
+    dashboardStore.attentionItems.overdueTasks.length > 0
   );
 });
+
+watch(activeTab, async (newTab: string) => {
+  if (newTab === 'completed') {
+    await fetchCompletedReviews();
+  }
+});
+
+async function fetchCompletedReviews() {
+  loadingCompleted.value = true;
+  try {
+    // Fetch all completed tasks with review info
+    const response = await fetch('http://localhost:3001/api/pm/tasks/completed');
+    const data = await response.json();
+    console.log('Completed tasks API response:', data);
+    if (data.success) {
+      // Fetch review status for each completed task
+      const tasksWithReviews = await Promise.all(
+        data.tasks.map(async (task: any) => {
+          try {
+            const reviewResponse = await fetch(`http://localhost:3001/api/pm/tasks/${task.id}/review-status`);
+            const reviewData = await reviewResponse.json();
+            return {
+              ...task,
+              review_status: reviewData.success ? reviewData.review_status : null,
+              reviewer_name: reviewData.success ? reviewData.reviewer_name : null
+            };
+          } catch {
+            return { ...task, review_status: null, reviewer_name: null };
+          }
+        })
+      );
+      completedTasks.value = tasksWithReviews;
+      console.log('completedTasks.value set to:', completedTasks.value);
+    }
+  } catch (error) {
+    console.error('Error fetching completed tasks:', error);
+  } finally {
+    loadingCompleted.value = false;
+  }
+}
+
+function showTaskDetail(task: any) {
+  selectedTask.value = task;
+  showTaskDetailDialog.value = true;
+}
+
+function formatDate(date: string) {
+  if (!date) return 'N/A';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return 'Invalid Date';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function showEmployeePerformance(user: any) {
+  selectedEmployee.value = user;
+  showPerformanceDialog.value = true;
+}
 </script>
 
 <style scoped>

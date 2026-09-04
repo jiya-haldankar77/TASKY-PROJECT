@@ -11,9 +11,7 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    // Pinia is installed by src/stores/index.ts; registering the legacy boot
-    // file as well creates a second Pinia instance and a duplicate warning.
-    boot: [],
+    boot: ['pinia'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -59,7 +57,14 @@ export default defineConfig((/* ctx */) => {
       // minify: false,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        viteConf.server = {
+          ...viteConf.server,
+          fs: {
+            allow: ['..'],
+          },
+        };
+      },
       // viteVuePluginOptions: {},
 
       vitePlugins: [
@@ -86,7 +91,19 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
-      config: {},
+      config: {
+        brand: {
+          primary: '#19192F',
+          secondary: '#C8F34A',
+          accent: '#C8F34A',
+          dark: '#19192F',
+          'dark-page': '#F8F9FB',
+          positive: '#43B85A',
+          negative: '#E85B5B',
+          info: '#4285E5',
+          warning: '#F4A623',
+        },
+      },
 
       // iconSet: 'material-icons', // Quasar icon set
       // lang: 'en-US', // Quasar language pack
@@ -99,7 +116,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Notify'],
+      plugins: ['Notify', 'Dialog'],
     },
 
     // animations: 'all', // --- includes all animations

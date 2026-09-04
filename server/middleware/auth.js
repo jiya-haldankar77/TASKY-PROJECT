@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tasky_jwt_secret_key_2024';
-const JWT_EXPIRES_IN = '7d';
+const JWT_EXPIRES_IN = '30d';
 
 export function generateToken(user) {
   return jwt.sign(
@@ -11,10 +11,10 @@ export function generateToken(user) {
       id: user.id,
       email: user.email,
       role: user.application_role === 'project_manager' ? 'pm' : 'employee',
-      org_id: user.org_id
+      org_id: user.org_id,
     },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN },
   );
 }
 
@@ -31,7 +31,8 @@ export function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ success: false, error: 'Invalid or expired token' });
+    console.error('JWT Verify Error:', err.message, 'Token:', token);
+    return res.status(403).json({ success: false, error: `Invalid or expired token: ${err.message}. Token was: ${token}` });
   }
 }
 
@@ -41,7 +42,9 @@ export function requireRole(role) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
     if (req.user.role !== role) {
-      return res.status(403).json({ success: false, error: `Access denied. Required role: ${role}` });
+      return res
+        .status(403)
+        .json({ success: false, error: `Access denied. Required role: ${role}` });
     }
     next();
   };

@@ -1,0 +1,12 @@
+DROP DATABASE IF EXISTS tasky;
+CREATE DATABASE tasky CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE tasky;
+SOURCE tasky_schema.sql;
+SOURCE server/migration_add_professional_roles.sql;
+SOURCE server/migration_add_application_role.sql;
+SOURCE migration_add_visibility.sql;
+SOURCE migration_add_subtask_table.sql;
+SOURCE migration_add_task_review_table.sql;
+SOURCE migration_add_daily_tracker_table.sql;
+SOURCE server/migration_add_settings.sql;
+SOURCE server/seed_data.sql;

@@ -2,7 +2,6 @@ import { Router } from 'express';
 const router = Router();
 
 export default function dashboardRoutes(pool) {
-
   // GET /api/pm/dashboard/stats
   router.get('/stats', async (req, res) => {
     try {
@@ -10,22 +9,26 @@ export default function dashboardRoutes(pool) {
       const pmId = req.user.id;
 
       // At-risk projects: projects with delayed tasks
-      const [atRiskProjects] = await pool.execute(`
+      const [atRiskProjects] = await pool.execute(
+        `
         SELECT COUNT(DISTINCT p.id) AS count
         FROM project p
         JOIN task t ON t.project_id = p.id
         WHERE p.org_id = ? AND p.created_by = ? AND p.status IN ('active','planning')
           AND t.status NOT IN ('completed')
           AND t.deadline < CURDATE()
-      `, [orgId, pmId]);
+      `,
+        [orgId, pmId],
+      );
 
       // Overloaded resources
-      const [overloaded] = await pool.execute(`
+      const [overloaded] = await pool.execute(
+        `
         SELECT COUNT(*) AS count FROM (
           SELECT u.id,
             COALESCE(SUM(
-              CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
-                THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
+              CASE WHEN ta2.cnt > 0
+                THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
                 ELSE 0 END
             ), 0) AS remaining
           FROM user u
@@ -37,30 +40,41 @@ export default function dashboardRoutes(pool) {
           GROUP BY u.id, u.max_hours_per_week
           HAVING remaining > u.max_hours_per_week
         ) sub
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
       // Overdue tasks
-      const [overdue] = await pool.execute(`
+      const [overdue] = await pool.execute(
+        `
         SELECT COUNT(*) AS count FROM task t
         JOIN project p ON p.id = t.project_id
         WHERE p.org_id = ? AND p.created_by = ?
           AND t.status NOT IN ('completed')
           AND t.deadline < CURDATE()
-      `, [orgId, pmId]);
+      `,
+        [orgId, pmId],
+      );
 
       // Pending reviews: employees who haven't submitted daily log today
-      const [totalEmployees] = await pool.execute(`
+      const [totalEmployees] = await pool.execute(
+        `
         SELECT COUNT(*) AS count FROM user u
         JOIN role r ON r.id = u.role_id
         WHERE u.org_id = ? AND u.is_active = 1 AND r.access_level = 'employee'
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
-      const [loggedToday] = await pool.execute(`
+      const [loggedToday] = await pool.execute(
+        `
         SELECT COUNT(DISTINCT dlc.user_id) AS count
         FROM daily_log_compliance dlc
         JOIN user u ON u.id = dlc.user_id
         WHERE u.org_id = ? AND dlc.log_date = CURDATE() AND dlc.status = 'logged'
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
       const pendingReviews = totalEmployees[0].count - loggedToday[0].count;
 
@@ -70,8 +84,8 @@ export default function dashboardRoutes(pool) {
           atRiskProjects: atRiskProjects[0].count,
           overloadedResources: overloaded[0].count,
           overdueTasks: overdue[0].count,
-          pendingReviews: Math.max(0, pendingReviews)
-        }
+          pendingReviews: Math.max(0, pendingReviews),
+        },
       });
     } catch (error) {
       console.error('Dashboard stats error:', error);
@@ -86,7 +100,8 @@ export default function dashboardRoutes(pool) {
       const pmId = req.user.id;
 
       // Delayed projects
-      const [delayedProjects] = await pool.execute(`
+      const [delayedProjects] = await pool.execute(
+        `
         SELECT DISTINCT p.id, p.name, p.color, p.priority, p.progress, p.end_date,
           DATEDIFF(CURDATE(), p.end_date) AS days_delayed,
           (SELECT COUNT(*) FROM task t2 WHERE t2.project_id = p.id AND t2.status NOT IN ('completed') AND t2.deadline < CURDATE()) AS overdue_tasks
@@ -95,15 +110,18 @@ export default function dashboardRoutes(pool) {
         WHERE p.org_id = ? AND p.created_by = ? AND p.status IN ('active','planning')
           AND t.status NOT IN ('completed') AND t.deadline < CURDATE()
         ORDER BY overdue_tasks DESC
-      `, [orgId, pmId]);
+      `,
+        [orgId, pmId],
+      );
 
       // Overloaded resources
-      const [overloadedResources] = await pool.execute(`
+      const [overloadedResources] = await pool.execute(
+        `
         SELECT u.id, u.first_name, u.last_name, u.avatar, u.employee_code,
           r.name AS role_name, u.max_hours_per_week,
           COALESCE(SUM(
-            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
-              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
+            CASE WHEN ta2.cnt > 0
+              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
               ELSE 0 END
           ), 0) AS remaining_hours,
           COUNT(DISTINCT t.project_id) AS project_count
@@ -116,10 +134,13 @@ export default function dashboardRoutes(pool) {
         GROUP BY u.id, u.first_name, u.last_name, u.avatar, u.employee_code, r.name, u.max_hours_per_week
         HAVING remaining_hours > u.max_hours_per_week
         ORDER BY remaining_hours DESC
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
       // Overdue tasks
-      const [overdueTasks] = await pool.execute(`
+      const [overdueTasks] = await pool.execute(
+        `
         SELECT t.id, t.title, t.priority, t.deadline, t.progress, t.status,
           p.name AS project_name, p.color AS project_color,
           DATEDIFF(CURDATE(), t.deadline) AS days_overdue,
@@ -130,25 +151,30 @@ export default function dashboardRoutes(pool) {
           AND t.status NOT IN ('completed') AND t.deadline < CURDATE()
         ORDER BY t.priority = 'critical' DESC, t.priority = 'high' DESC, days_overdue DESC
         LIMIT 10
-      `, [orgId, pmId]);
+      `,
+        [orgId, pmId],
+      );
 
       res.json({
         success: true,
         attention: {
-          delayedProjects: delayedProjects.map(p => ({
-            ...p, type: 'project'
+          delayedProjects: delayedProjects.map((p) => ({
+            ...p,
+            type: 'project',
           })),
-          overloadedResources: overloadedResources.map(r => ({
+          overloadedResources: overloadedResources.map((r) => ({
             ...r,
-            utilization: r.max_hours_per_week > 0
-              ? Math.round((r.remaining_hours / r.max_hours_per_week) * 100)
-              : 0,
-            type: 'resource'
+            utilization:
+              r.max_hours_per_week > 0
+                ? Math.round((r.remaining_hours / r.max_hours_per_week) * 100)
+                : 0,
+            type: 'resource',
           })),
-          overdueTasks: overdueTasks.map(t => ({
-            ...t, type: 'task'
-          }))
-        }
+          overdueTasks: overdueTasks.map((t) => ({
+            ...t,
+            type: 'task',
+          })),
+        },
       });
     } catch (error) {
       console.error('Dashboard attention error:', error);
@@ -162,7 +188,8 @@ export default function dashboardRoutes(pool) {
       const orgId = req.user.org_id;
       const date = req.query.date || new Date().toISOString().split('T')[0];
 
-      const [logs] = await pool.execute(`
+      const [logs] = await pool.execute(
+        `
         SELECT dwl.*, u.first_name, u.last_name, u.avatar, u.employee_code,
           t.title AS task_title, t.progress AS task_progress,
           p.name AS project_name, p.color AS project_color
@@ -172,7 +199,9 @@ export default function dashboardRoutes(pool) {
         JOIN project p ON p.id = t.project_id
         WHERE u.org_id = ? AND dwl.log_date = ?
         ORDER BY dwl.created_at DESC
-      `, [orgId, date]);
+      `,
+        [orgId, date],
+      );
 
       res.json({ success: true, logs });
     } catch (error) {

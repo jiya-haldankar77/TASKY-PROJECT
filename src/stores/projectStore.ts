@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useAuthStore } from './authStore';
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
@@ -10,16 +9,15 @@ export const useProjectStore = defineStore('project', {
   }),
 
   getters: {
-    activeProjects: (state) => state.projects.filter(p => p.status === 'active'),
-    atRiskProjects: (state) => state.projects.filter(p => p.overdue_task_count > 0),
+    activeProjects: (state) => state.projects.filter((p) => p.status === 'active'),
+    atRiskProjects: (state) => state.projects.filter((p) => p.overdue_task_count > 0),
   },
 
   actions: {
     getHeaders() {
-      const auth = useAuthStore();
-      return { 
+      // Authentication removed for testing
+      return {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}` 
       };
     },
 
@@ -62,6 +60,25 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
+    async fetchProjectDetails(id: string) {
+      this.loading = true;
+      try {
+        const response = await fetch(`http://localhost:3001/api/pm/projects/${id}/details`, {
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.currentProject = data.project;
+        } else {
+          this.error = data.error;
+        }
+      } catch (err: any) {
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async createProject(projectData: any) {
       try {
         const response = await fetch('http://localhost:3001/api/pm/projects', {
@@ -89,7 +106,7 @@ export const useProjectStore = defineStore('project', {
         });
         const data = await response.json();
         if (data.success) {
-          const index = this.projects.findIndex(p => p.id == id);
+          const index = this.projects.findIndex((p) => p.id == id);
           if (index !== -1) {
             this.projects[index] = { ...this.projects[index], ...data.project };
           }
@@ -112,7 +129,7 @@ export const useProjectStore = defineStore('project', {
         });
         const data = await response.json();
         if (data.success) {
-          this.projects = this.projects.filter(p => p.id != id);
+          this.projects = this.projects.filter((p) => p.id != id);
           if (this.currentProject && this.currentProject.id == id) {
             this.currentProject = null;
           }
@@ -122,6 +139,10 @@ export const useProjectStore = defineStore('project', {
       } catch (err: any) {
         throw err;
       }
-    }
+    },
+
+    async refresh() {
+      await this.fetchProjects();
+    },
   },
 });

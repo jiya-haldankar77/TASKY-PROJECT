@@ -11,7 +11,7 @@ async function run() {
     host: 'localhost',
     user: 'root',
     password: 'root',
-    multipleStatements: true
+    multipleStatements: true,
   });
 
   try {
@@ -30,7 +30,6 @@ async function run() {
     const seedSql = await fs.readFile(seedPath, 'utf8');
     await connection.query(seedSql);
     console.log('Seed data imported.');
-
   } catch (err) {
     console.error('Error:', err);
   } finally {

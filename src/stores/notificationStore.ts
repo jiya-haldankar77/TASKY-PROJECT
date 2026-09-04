@@ -1,67 +1,69 @@
 import { defineStore } from 'pinia';
 import { useAuthStore } from './authStore';
 
-export interface Notification {
-  id: number;
-  user_id: number;
-  type: string;
-  title: string;
-  message: string;
-  reference_type: string | null;
-  reference_id: number | null;
-  is_read: number | boolean;
-  created_at: string;
-}
-
-const API_URL = 'http://localhost:3001/api/notifications';
-
 export const useNotificationStore = defineStore('notification', {
   state: () => ({
-    notifications: [] as Notification[],
-    isFetching: false,
-    isMarkingAsRead: false,
-    isMarkingAllAsRead: false,
-    isDeleting: false,
+    notifications: [] as any[],
+    loading: false,
     error: null as string | null,
   }),
+
   getters: {
-    unreadCount: (state) => state.notifications.filter(notification => !notification.is_read).length,
+    unreadCount: (state) => state.notifications.filter((n) => !n.is_read).length,
   },
+
   actions: {
     getHeaders() {
       const auth = useAuthStore();
       return { Authorization: `Bearer ${auth.token}` };
     },
-    async request(path = '', options: RequestInit = {}) {
-      const response = await fetch(`${API_URL}${path}`, { ...options, headers: { ...this.getHeaders(), ...(options.headers || {}) } });
-      let data: any;
-      try { data = await response.json(); } catch { data = null; }
-      if (!response.ok || !data?.success) throw new Error(data?.error || `Request failed (${response.status})`);
-      return data;
-    },
+
     async fetchNotifications() {
-      this.error = null; this.isFetching = true;
-      try { const data = await this.request(); this.notifications = data.notifications as Notification[]; }
-      catch (error: any) { this.error = error.message; }
-      finally { this.isFetching = false; }
+      this.loading = true;
+      try {
+        const response = await fetch('http://localhost:3001/api/pm/notifications', {
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.notifications = data.notifications;
+        }
+      } catch (err: any) {
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
     },
-    async markAsRead(id: number) {
-      this.error = null; this.isMarkingAsRead = true;
-      try { await this.request(`/${id}/read`, { method: 'PUT' }); const notification = this.notifications.find(item => item.id === id); if (notification) notification.is_read = 1; }
-      catch (error: any) { this.error = error.message; }
-      finally { this.isMarkingAsRead = false; }
+
+    async markAsRead(id: string) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/pm/notifications/${id}/read`, {
+          method: 'PUT',
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          const n = this.notifications.find((n) => n.id == id);
+          if (n) n.is_read = 1;
+        }
+      } catch (err: any) {
+        console.error(err);
+      }
     },
+
     async markAllAsRead() {
-      this.error = null; this.isMarkingAllAsRead = true;
-      try { await this.request('/read-all', { method: 'PUT' }); this.notifications.forEach(notification => { notification.is_read = 1; }); }
-      catch (error: any) { this.error = error.message; }
-      finally { this.isMarkingAllAsRead = false; }
-    },
-    async deleteNotification(id: number) {
-      this.error = null; this.isDeleting = true;
-      try { await this.request(`/${id}`, { method: 'DELETE' }); this.notifications = this.notifications.filter(notification => notification.id !== id); }
-      catch (error: any) { this.error = error.message; }
-      finally { this.isDeleting = false; }
+      try {
+        const response = await fetch('http://localhost:3001/api/pm/notifications/read-all', {
+          method: 'PUT',
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.notifications.forEach((n) => (n.is_read = 1));
+        }
+      } catch (err: any) {
+        console.error(err);
+      }
     },
   },
 });

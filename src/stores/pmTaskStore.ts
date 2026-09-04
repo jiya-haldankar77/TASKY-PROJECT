@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useAuthStore } from './authStore';
 
 export const usePmTaskStore = defineStore('pmTask', {
   state: () => ({
@@ -18,10 +17,9 @@ export const usePmTaskStore = defineStore('pmTask', {
 
   actions: {
     getHeaders() {
-      const auth = useAuthStore();
-      return { 
+      // Authentication removed for testing
+      return {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${auth.token}` 
       };
     },
 
@@ -92,7 +90,7 @@ export const usePmTaskStore = defineStore('pmTask', {
         });
         const data = await response.json();
         if (data.success) {
-          const index = this.tasks.findIndex(t => t.id == id);
+          const index = this.tasks.findIndex((t) => t.id == id);
           if (index !== -1) {
             this.tasks[index] = { ...this.tasks[index], ...data.task };
           }
@@ -107,7 +105,7 @@ export const usePmTaskStore = defineStore('pmTask', {
       }
     },
 
-    async deleteTask(id: string) {
+    async deleteTask(id: number | string) {
       try {
         const response = await fetch(`http://localhost:3001/api/pm/tasks/${id}`, {
           method: 'DELETE',
@@ -115,16 +113,21 @@ export const usePmTaskStore = defineStore('pmTask', {
         });
         const data = await response.json();
         if (data.success) {
-          this.tasks = this.tasks.filter(t => t.id != id);
+          this.tasks = this.tasks.filter((t) => t.id != id);
           if (this.currentTask && this.currentTask.id == id) {
             this.currentTask = null;
           }
           return true;
         }
-        throw new Error(data.error);
+        throw new Error(data.error || 'Failed to delete task');
       } catch (err: any) {
+        console.error('Delete task error:', err);
         throw err;
       }
+    },
+
+    async refresh() {
+      await this.fetchTasks();
     },
 
     async adjustProgress(id: string, progress: number, notes?: string) {
@@ -137,7 +140,7 @@ export const usePmTaskStore = defineStore('pmTask', {
         const data = await response.json();
         if (data.success) {
           // Optimistically update
-          const task = this.tasks.find(t => t.id == id);
+          const task = this.tasks.find((t) => t.id == id);
           if (task) task.progress = progress;
           if (this.currentTask && this.currentTask.id == id) this.currentTask.progress = progress;
           return true;
@@ -161,6 +164,6 @@ export const usePmTaskStore = defineStore('pmTask', {
       } catch (err: any) {
         throw err;
       }
-    }
+    },
   },
 });

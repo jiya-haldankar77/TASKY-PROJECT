@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useAuthStore } from './authStore';
 
 export const useDashboardStore = defineStore('dashboard', {
   state: () => ({
@@ -15,14 +14,17 @@ export const useDashboardStore = defineStore('dashboard', {
       overdueTasks: [] as any[],
     },
     dailyProgress: [] as any[],
+    users: [] as any[],
     loading: false,
     error: null as string | null,
   }),
 
   actions: {
     getHeaders() {
-      const auth = useAuthStore();
-      return { Authorization: `Bearer ${auth.token}` };
+      // Authentication removed for testing
+      return {
+        'Content-Type': 'application/json',
+      };
     },
 
     async fetchDashboardStats() {
@@ -82,12 +84,50 @@ export const useDashboardStore = defineStore('dashboard', {
       }
     },
 
+    async fetchUsers() {
+      this.loading = true;
+      try {
+        const response = await fetch('http://localhost:3001/api/users', {
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        console.log('Fetch users response:', data);
+        if (data.success) {
+          this.users = data.users;
+          console.log('Users set in store:', this.users);
+        } else {
+          this.error = data.error;
+          console.error('Fetch users error:', data.error);
+        }
+      } catch (err: any) {
+        this.error = err.message;
+        console.error('Fetch users exception:', err);
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async loadAll() {
-      await Promise.all([
-        this.fetchDashboardStats(),
-        this.fetchAttentionItems(),
-        this.fetchDailyProgress(),
-      ]);
-    }
+      this.loading = true;
+      this.error = null;
+      console.log('DashboardStore loadAll - starting to fetch all data');
+      try {
+        await Promise.all([
+          this.fetchDashboardStats(),
+          this.fetchAttentionItems(),
+          this.fetchDailyProgress(),
+          this.fetchUsers(),
+        ]);
+        console.log('DashboardStore loadAll - all data fetched successfully');
+        console.log('- Stats:', this.stats);
+        console.log('- Attention items:', this.attentionItems);
+        console.log('- Users count:', this.users.length);
+      } catch (err: any) {
+        console.error('DashboardStore loadAll error:', err);
+        this.error = err.message;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { getOrgResourceWorkloads, detectOverloadedResources, rebalanceWorkloads } from '../services/schedulingEngine.js';
+import {
+  getOrgResourceWorkloads,
+  detectOverloadedResources,
+  rebalanceWorkloads,
+} from '../services/schedulingEngine.js';
 const router = Router();
 
 export default function resourceRoutes(pool) {
-
   // GET /api/pm/resources
   router.get('/', async (req, res) => {
     try {
@@ -14,23 +17,27 @@ export default function resourceRoutes(pool) {
 
       // Get project details for each resource
       for (const r of resources) {
-        const [projects] = await pool.execute(`
+        const [projects] = await pool.execute(
+          `
           SELECT DISTINCT p.id, p.name, p.color, UPPER(LEFT(p.name, 1)) AS letter
           FROM task t
           JOIN task_assignment ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.is_active = 1
           JOIN project p ON p.id = t.project_id
           WHERE t.status IN ('not-started','in-progress','blocked')
-        `, [r.user_id]);
+        `,
+          [r.user_id],
+        );
         r.projects = projects;
       }
 
       let filtered = resources;
       if (search) {
         const q = search.toLowerCase();
-        filtered = resources.filter(r =>
-          `${r.first_name} ${r.last_name}`.toLowerCase().includes(q) ||
-          r.employee_code.toLowerCase().includes(q) ||
-          r.role_name.toLowerCase().includes(q)
+        filtered = resources.filter(
+          (r) =>
+            `${r.first_name} ${r.last_name}`.toLowerCase().includes(q) ||
+            r.employee_code.toLowerCase().includes(q) ||
+            r.role_name.toLowerCase().includes(q),
         );
       }
 
@@ -46,11 +53,14 @@ export default function resourceRoutes(pool) {
     try {
       const userId = req.params.id;
 
-      const [users] = await pool.execute(`
+      const [users] = await pool.execute(
+        `
         SELECT u.*, r.name AS role_name, r.access_level
         FROM user u JOIN role r ON r.id = u.role_id
         WHERE u.id = ?
-      `, [userId]);
+      `,
+        [userId],
+      );
 
       if (users.length === 0) {
         return res.status(404).json({ success: false, error: 'Resource not found' });
@@ -58,21 +68,48 @@ export default function resourceRoutes(pool) {
 
       const user = users[0];
 
-      // Active tasks
-      const [tasks] = await pool.execute(`
-        SELECT t.*, p.name AS project_name, p.color AS project_color
+      // Active tasks with review status, overdue detection, and subtasks
+      const [tasks] = await pool.execute(
+        `
+        SELECT t.*, p.name AS project_name, p.color AS project_color,
+          COALESCE(tr.status, 'not-submitted') AS review_status,
+          tr.review_comment,
+          tr.completion_comment,
+          CASE 
+            WHEN t.deadline < CURDATE() AND t.status NOT IN ('completed', 'review-done', 'finalized') THEN 1
+            ELSE 0 
+          END AS is_overdue
         FROM task_assignment ta
         JOIN task t ON t.id = ta.task_id
         JOIN project p ON p.id = t.project_id
+        LEFT JOIN task_review tr ON tr.task_id = t.id
         WHERE ta.user_id = ? AND ta.is_active = 1 AND t.status IN ('not-started','in-progress','blocked')
         ORDER BY FIELD(t.priority,'critical','high','medium','low'), t.deadline ASC
-      `, [userId]);
+      `,
+        [userId],
+      );
 
-      const [workloadByProject] = await pool.execute(`
+      // Fetch subtasks for each task
+      for (const task of tasks) {
+        const [subtasks] = await pool.execute(
+          `
+          SELECT id, title, status, completed, progress
+          FROM subtask
+          WHERE task_id = ?
+          ORDER BY id ASC
+          `,
+          [task.id]
+        );
+        task.subtasks = subtasks || [];
+      }
+
+      // Workload breakdown by project
+      const [workloadByProject] = await pool.execute(
+        `
         SELECT p.id, p.name, p.color,
           COALESCE(SUM(
-            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
-              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
+            CASE WHEN ta2.cnt > 0
+              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
               ELSE 0 END
           ), 0) AS hours
         FROM task t
@@ -81,21 +118,34 @@ export default function resourceRoutes(pool) {
         LEFT JOIN (SELECT task_id, COUNT(*) AS cnt FROM task_assignment WHERE is_active=1 GROUP BY task_id) ta2 ON ta2.task_id = t.id
         WHERE t.status IN ('not-started','in-progress','blocked')
         GROUP BY p.id, p.name, p.color
-      `, [userId]);
+      `,
+        [userId],
+      );
+
+      // Round workload hours to whole numbers
+      for (const wp of workloadByProject) {
+        wp.hours = Math.round(Number(wp.hours));
+      }
 
       // Daily log compliance
-      const [compliance] = await pool.execute(`
+      const [compliance] = await pool.execute(
+        `
         SELECT log_date, status, submitted_at
         FROM daily_log_compliance
         WHERE user_id = ?
         ORDER BY log_date DESC
         LIMIT 30
-      `, [userId]);
+      `,
+        [userId],
+      );
 
       // Leave requests
-      const [leaves] = await pool.execute(`
+      const [leaves] = await pool.execute(
+        `
         SELECT * FROM leave_request WHERE user_id = ? ORDER BY start_date DESC
-      `, [userId]);
+      `,
+        [userId],
+      );
 
       res.json({
         success: true,
@@ -105,8 +155,8 @@ export default function resourceRoutes(pool) {
           workloadByProject,
           compliance,
           leaves,
-          password_hash: undefined // don't expose
-        }
+          password_hash: undefined, // don't expose
+        },
       });
     } catch (error) {
       console.error('Get resource detail error:', error);
@@ -122,13 +172,16 @@ export default function resourceRoutes(pool) {
 
       // Get conflict details for each overloaded resource
       for (const r of overloaded) {
-        const [projects] = await pool.execute(`
+        const [projects] = await pool.execute(
+          `
           SELECT DISTINCT p.name, p.color
           FROM task t
           JOIN task_assignment ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.is_active = 1
           JOIN project p ON p.id = t.project_id
           WHERE t.status IN ('not-started','in-progress','blocked')
-        `, [r.user_id]);
+        `,
+          [r.user_id],
+        );
         r.conflicting_projects = projects;
       }
 
@@ -144,11 +197,12 @@ export default function resourceRoutes(pool) {
     try {
       const orgId = req.user.org_id;
 
-      const [available] = await pool.execute(`
+      const [available] = await pool.execute(
+        `
         SELECT u.id, u.first_name, u.last_name, u.avatar, r.name AS role_name,
           COALESCE(SUM(
-            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
-              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
+            CASE WHEN ta2.cnt > 0
+              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
               ELSE 0 END
           ), 0) AS remaining
         FROM user u
@@ -160,13 +214,16 @@ export default function resourceRoutes(pool) {
         GROUP BY u.id, u.first_name, u.last_name, u.avatar, r.name, u.max_hours_per_week
         HAVING remaining <= u.max_hours_per_week * 0.8
         ORDER BY remaining ASC
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
-      const [unavailable] = await pool.execute(`
+      const [unavailable] = await pool.execute(
+        `
         SELECT u.id, u.first_name, u.last_name, u.avatar, r.name AS role_name,
           COALESCE(SUM(
-            CASE WHEN t.id IS NOT NULL AND ta2.cnt > 0
-              THEN ((t.expected_effort * (100 - t.progress) / 100) / ta2.cnt) / GREATEST(1, DATEDIFF(t.deadline, CURDATE()) / 7.0)
+            CASE WHEN ta2.cnt > 0
+              THEN (t.expected_effort * (100 - t.progress) / 100) / ta2.cnt
               ELSE 0 END
           ), 0) AS remaining
         FROM user u
@@ -178,13 +235,15 @@ export default function resourceRoutes(pool) {
         GROUP BY u.id, u.first_name, u.last_name, u.avatar, r.name, u.max_hours_per_week
         HAVING remaining > u.max_hours_per_week * 0.8
         ORDER BY remaining DESC
-      `, [orgId]);
+      `,
+        [orgId],
+      );
 
       res.json({
         success: true,
         available,
         unavailable,
-        counts: { available: available.length, unavailable: unavailable.length }
+        counts: { available: available.length, unavailable: unavailable.length },
       });
     } catch (error) {
       console.error('Get availability error:', error);
