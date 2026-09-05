@@ -42,6 +42,9 @@
         </div>
         <q-btn icon="close" flat round dense v-close-popup />
       </div>
+      <q-card-section class="bg-white q-py-sm">
+        <q-btn outline color="indigo" icon="insights" label="View Performance Statistics" no-caps @click="showPerformanceDialog = true" />
+      </q-card-section>
 
       <!-- Content -->
       <div class="q-pa-md" style="flex: 1 1 auto; overflow-y: auto">
@@ -291,6 +294,8 @@
       </div>
     </q-card>
 
+    <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="resourceStore.currentResource" />
+
     <!-- Task Assignment Dialog -->
     <q-dialog v-model="showAssignTaskDialog">
       <q-card style="width: 500px; max-width: 90vw; border-radius: 12px">
@@ -416,6 +421,7 @@ import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResourceStore } from '../stores/resourceStore';
 import { useQuasar } from 'quasar';
+import EmployeePerformanceReport from './EmployeePerformanceReport.vue';
 
 const props = defineProps({
   modelValue: {
@@ -448,6 +454,7 @@ const taskToReassign = ref<any>(null);
 const eligibleEmployees = ref<any[]>([]);
 const selectedNewEmployee = ref<any>(null);
 const reassigning = ref(false);
+const showPerformanceDialog = ref(false);
 
 watch(
   () => props.modelValue,

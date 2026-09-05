@@ -17,19 +17,6 @@
         <div class="text-grey-7 text-caption">Overview of what needs your attention today</div>
       </div>
       <div class="row items-center q-gutter-sm">
-        <q-input
-          v-model="searchQuery"
-          outlined
-          dense
-          rounded
-          bg-color="white"
-          placeholder="Search attention items & logs..."
-          style="width: 250px"
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
         <q-avatar size="36px" class="cursor-pointer">
           <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
           <q-menu anchor="bottom right" self="top right">
@@ -140,6 +127,11 @@
                 <q-tab name="employee" label="Employees" />
                 <q-tab name="task" label="Tasks" />
               </q-tabs>
+              <q-card-section class="q-pb-sm q-pt-sm bg-red-1">
+                <q-input v-model="searchQuery" outlined dense bg-color="white" placeholder="Search attention items..." class="attention-search">
+                  <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+              </q-card-section>
 
               <q-card-section
                 class="q-pt-none q-px-md q-pb-md"
@@ -273,6 +265,11 @@
                 </div>
                 <div class="text-caption">All users in your organization</div>
               </q-card-section>
+              <q-card-section class="q-pb-sm q-pt-sm bg-green-1">
+                <q-input v-model="teamSearchQuery" outlined dense bg-color="white" placeholder="Search team members..." class="team-search">
+                  <template v-slot:prepend><q-icon name="search" /></template>
+                </q-input>
+              </q-card-section>
 
               <q-card-section
                 class="q-pt-none q-px-md q-pb-md"
@@ -280,7 +277,7 @@
               >
                 <q-list separator v-if="dashboardStore.users.length > 0">
                   <q-item
-                    v-for="user in dashboardStore.users"
+                    v-for="user in filteredUsers"
                     :key="user.id"
                     class="q-py-md cursor-pointer"
                     clickable
@@ -428,6 +425,7 @@ const { logout } = authStore;
 const dashboardStore = useDashboardStore();
 
 const searchQuery = ref('');
+const teamSearchQuery = ref('');
 const selectedEmployee = ref<any>(null);
 const showPerformanceDialog = ref(false);
 const activeTab = ref('overview');
@@ -449,6 +447,11 @@ onMounted(() => {
 });
 
 const pendingReviewsCount = computed(() => 0);
+const filteredUsers = computed(() => {
+  const query = teamSearchQuery.value.toLowerCase().trim();
+  if (!query) return dashboardStore.users;
+  return dashboardStore.users.filter((user: any) => `${user.first_name} ${user.last_name} ${user.employee_code} ${user.email || ''} ${user.role_name || ''}`.toLowerCase().includes(query));
+});
 
 const filteredAttentionItems = computed(() => {
   const query = searchQuery.value.toLowerCase();

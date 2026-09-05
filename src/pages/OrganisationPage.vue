@@ -80,9 +80,12 @@
 
         <!-- Complete Member Directory Grid -->
         <div class="text-h6 text-weight-bold q-mb-md q-mt-md">Complete Organization Directory</div>
+        <q-input v-model="memberSearch" outlined dense bg-color="grey-1" placeholder="Search members by name, email or role..." class="q-mb-md directory-search">
+          <template v-slot:prepend><q-icon name="search" /></template>
+        </q-input>
         <div class="row q-col-gutter-md">
           <div
-            v-for="member in orgStore.members"
+            v-for="member in filteredMembers"
             :key="member.id"
             class="col-12 col-sm-6 col-md-4 col-lg-3"
           >
@@ -123,7 +126,22 @@
         </div>
 
         <!-- Role-based Grouping -->
-        <div class="text-h6 text-weight-bold q-mb-md q-mt-lg">By Role</div>
+        <div class="row items-center justify-between q-mb-md q-mt-lg">
+  <div class="text-h6 text-weight-bold">By Role</div>
+
+  <q-input
+    v-model="roleSearch"
+    outlined
+    dense
+    bg-color="grey-1"
+    placeholder="Search by role..."
+    style="width: 250px"
+  >
+    <template v-slot:prepend>
+      <q-icon name="search" />
+    </template>
+  </q-input>
+</div>
         <div class="row q-col-gutter-md">
           <div
             v-for="(members, role) in groupedMembers"
@@ -281,6 +299,7 @@ const inviteMaxUses = ref(50);
 const inviteCodeGenerated = ref(false);
 const generatedInviteCode = ref('');
 const generatingInvite = ref(false);
+const memberSearch = ref('');
 
 const inviteLink = computed(() => {
   if (!generatedInviteCode.value) return '';
@@ -292,8 +311,12 @@ onMounted(async () => {
   await orgStore.fetchMembers();
 });
 
+const roleSearch = ref('');
+
 const groupedMembers = computed(() => {
   const groups: Record<string, any[]> = {};
+  const query = roleSearch.value.toLowerCase().trim();
+
   orgStore.members.forEach((member: any) => {
     let role = member.professional_role || 'Unassigned';
 
@@ -302,12 +325,30 @@ const groupedMembers = computed(() => {
       role = 'Project Manager';
     }
 
+    // Search within role and member information
+    if (
+      query &&
+      !`${role} ${member.first_name} ${member.last_name} ${member.email}`
+        .toLowerCase()
+        .includes(query)
+    ) {
+      return;
+    }
+
     if (!groups[role]) {
       groups[role] = [];
     }
+
     groups[role]!.push(member);
   });
+
   return groups;
+});
+
+const filteredMembers = computed(() => {
+  const query = memberSearch.value.toLowerCase().trim();
+  if (!query) return orgStore.members;
+  return orgStore.members.filter((member: any) => `${member.first_name} ${member.last_name} ${member.email} ${member.employee_code} ${member.role_name} ${member.professional_role || ''}`.toLowerCase().includes(query));
 });
 
 const deactivateInvite = async (id: string) => {

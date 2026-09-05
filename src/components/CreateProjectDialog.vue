@@ -1,13 +1,14 @@
 <template>
   <q-dialog v-model="isOpen" persistent>
-    <q-card style="width: 500px; max-width: 90vw">
-      <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">{{ isEdit ? 'Edit Project' : 'Create New Project' }}</div>
+    <q-card class="create-dialog-card" style="width: 540px; max-width: 90vw">
+      <q-card-section class="create-dialog-header row items-center q-pb-md">
+        <q-avatar color="white" text-color="indigo" icon="o_folder_open" size="42px" class="q-mr-md" />
+        <div><div class="text-h6 text-weight-bold">{{ isEdit ? 'Edit Project' : 'Create New Project' }}</div><div class="text-caption text-indigo-1">Set up the essentials for a successful delivery</div></div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pt-md">
+      <q-card-section class="q-pa-lg">
         <q-form @submit="onSubmit" class="q-gutter-md">
           <q-input
             v-model="form.name"
@@ -26,7 +27,7 @@
             rows="3"
           />
 
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-md" style="gap:20px;">
             <div class="col-6">
               <q-select
                 v-model="form.status"
@@ -38,7 +39,7 @@
                 map-options
               />
             </div>
-            <div class="col-6">
+            <div class="col-5">
               <q-select
                 v-model="form.priority"
                 :options="priorityOptions"
@@ -51,7 +52,7 @@
             </div>
           </div>
 
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-md" style="gap:20px;">
             <div class="col-6">
               <q-input
                 v-model="form.start_date"
@@ -63,7 +64,7 @@
                 stack-label
               />
             </div>
-            <div class="col-6">
+            <div class="col-5">
               <q-input
                 v-model="form.end_date"
                 label="Deadline *"
@@ -74,15 +75,6 @@
                 stack-label
               />
             </div>
-          </div>
-
-          <div class="q-mb-md">
-            <div class="text-caption text-grey-8 q-mb-xs">Theme Color</div>
-            <input
-              v-model="form.color"
-              type="color"
-              style="width: 100px; height: 40px; cursor: pointer"
-            />
           </div>
 
           <div class="row justify-end q-mt-lg">
@@ -203,3 +195,8 @@ const onSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.create-dialog-card { border-radius: 18px; overflow: hidden; }
+.create-dialog-header { color: white; background: linear-gradient(135deg, #3949ab, #5c6bc0); }
+</style>

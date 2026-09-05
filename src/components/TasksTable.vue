@@ -4,18 +4,16 @@
     style="height: 100%; min-height: 0; overflow: hidden; display: flex; flex-direction: column"
   >
     <q-table
-      :rows="filteredTasks"
-      :columns="columns"
-      row-key="id"
-      flat
-      bordered
-      v-model:pagination="pagination"
-      selection="multiple"
-      v-model:selected="selected"
-      class="full-height-table"
-      style="border-radius: 8px; flex: 1 1 0"
-      :loading="taskStore.loading"
-    >
+  :rows="filteredTasks"
+  :columns="columns"
+  row-key="id"
+  flat
+  bordered
+  v-model:pagination="pagination"
+  class="full-height-table"
+  style="border-radius: 8px; flex: 1 1 0"
+  :loading="taskStore.loading"
+>
       <!-- Loading State -->
       <template v-slot:loading>
         <q-inner-loading showing color="primary" />
@@ -95,18 +93,11 @@
       <template v-slot:body-cell-progress="props">
         <q-td :props="props">
           <div class="column" style="width: 80px">
-            <q-circular-progress
-              :value="props.row.progress || 0"
+            <q-linear-progress
+              :value="Math.min(100, Math.max(0, Number(props.row.progress) || 0)) / 100"
               :color="getProgressColor(props.row.progress)"
-              size="32px"
-              track-color="grey-3"
-              :thickness="0.2"
-              class="q-mb-xs"
-              show-value
-              :style="`font-size: 10px; font-weight: bold; color: ${getProgressColor(props.row.progress)}`"
-            >
-              {{ props.row.progress || 0 }}
-            </q-circular-progress>
+              size="8px" rounded class="q-mt-sm" />
+            <div class="text-caption text-weight-bold q-mt-xs">{{ Math.round(Number(props.row.progress) || 0) }}%</div>
           </div>
         </q-td>
       </template>
@@ -198,20 +189,6 @@
               @click.stop="$emit('finalize-review', props.row)"
             >
               <q-tooltip>Finalize Review</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              round
-              dense
-              :icon="props.row.is_visible ? 'visibility' : 'visibility_off'"
-              :color="props.row.is_visible ? 'indigo' : 'grey-6'"
-              size="10px"
-              :class="props.row.is_visible ? 'bg-indigo-1' : 'bg-grey-2'"
-              @click.stop="toggleVisibility(props.row)"
-            >
-              <q-tooltip>{{
-                props.row.is_visible ? 'Hide from Employees' : 'Show to Employees'
-              }}</q-tooltip>
             </q-btn>
             <q-btn
               flat
@@ -316,7 +293,6 @@ import { date } from 'quasar';
 
 const taskStore = usePmTaskStore();
 
-const selected = ref([]);
 
 const columns: QTableProps['columns'] = [
   { name: 'task', label: 'Task', field: 'title', align: 'left', sortable: true },
@@ -384,23 +360,6 @@ const getDeadlineText = (task: any) => {
   if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
   if (diffDays === 0) return 'Due today';
   return `${diffDays} days left`;
-};
-
-const toggleVisibility = async (task: any) => {
-  try {
-    const newVisibility = !task.is_visible;
-    const response = await fetch(`http://localhost:3001/api/pm/tasks/${task.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_visible: newVisibility }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      task.is_visible = newVisibility;
-    }
-  } catch (error) {
-    console.error('Error toggling visibility:', error);
-  }
 };
 
 const pagination = ref({

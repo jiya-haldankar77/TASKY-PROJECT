@@ -95,9 +95,9 @@
           style="border-radius: 12px; font-weight: 500"
         >
           <q-item-section avatar>
-            <q-icon name="o_calendar_today" />
+            <q-icon name="timeline" />
           </q-item-section>
-          <q-item-section>Calendar</q-item-section>
+          <q-item-section>Timeline</q-item-section>
         </q-item>
 
         <q-item

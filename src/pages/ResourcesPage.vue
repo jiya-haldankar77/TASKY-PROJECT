@@ -10,8 +10,19 @@
         </div>
       </div>
       <div class="row q-gutter-sm">
-        <q-btn flat color="indigo" label="Refresh" @click="fetchEmployees" :loading="loading" />
-      </div>
+  <q-input
+    v-model="searchQuery"
+    outlined
+    dense
+    placeholder="Search resources..."
+    bg-color="white"
+    style="width: 250px"
+  >
+    <template v-slot:prepend>
+      <q-icon name="search" />
+    </template>
+  </q-input>
+</div>
     </div>
 
     <!-- Error State -->
@@ -28,7 +39,7 @@
     <!-- Employee List -->
     <div v-else-if="employees.length > 0">
       <q-table
-        :rows="employees"
+        :rows="filteredEmployees"
         :columns="columns"
         row-key="user_id"
         flat
@@ -86,10 +97,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import ResourceDetailDialog from '../components/ResourceDetailDialog.vue';
 
 const employees = ref<any[]>([]);
+const searchQuery = ref('');
 const loading = ref(false);
 const error = ref<string | null>(null);
 const showResourceDialog = ref(false);
@@ -103,6 +115,26 @@ const columns = [
   { name: 'hours', label: 'Weekly Hours', field: 'weekly_required_hours', align: 'center' as const, sortable: true, format: (val: number) => `${Math.round(val)}h` },
   { name: 'status', label: 'Status', field: 'workload_status', align: 'center' as const, sortable: true },
 ];
+
+const filteredEmployees = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim();
+
+  if (!query) return employees.value;
+
+  return employees.value.filter((employee) => {
+    const name = `${employee.first_name} ${employee.last_name}`.toLowerCase();
+    const code = (employee.employee_code || '').toLowerCase();
+    const role = (employee.role_name || '').toLowerCase();
+    const status = (employee.workload_status || '').toLowerCase();
+
+    return (
+      name.includes(query) ||
+      code.includes(query) ||
+      role.includes(query) ||
+      status.includes(query)
+    );
+  });
+});
 
 const fetchEmployees = async () => {
   loading.value = true;

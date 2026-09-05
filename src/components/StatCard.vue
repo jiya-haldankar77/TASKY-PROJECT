@@ -1,15 +1,15 @@
 <template>
-  <q-card flat class="rounded-borders q-pa-sm shadow-1" style="border-radius: 8px">
+  <q-card flat class="stat-card rounded-borders q-pa-md shadow-1">
     <div class="row justify-between items-center q-mb-xs">
-      <div class="text-grey-7 text-caption text-weight-medium" style="font-size: 10px">
+      <div class="text-grey-7 text-caption text-weight-medium">
         {{ title }}
       </div>
       <q-avatar size="24px" :color="`${color}-1`" :text-color="color" :icon="icon" />
     </div>
-    <div :class="`text-h6 text-weight-bold text-${color}`" style="line-height: 1">{{ value }}</div>
+    <div :class="`text-h4 text-weight-bold text-${color}`" style="line-height: 1">{{ value }}</div>
     <div
       class="row items-center text-grey-6"
-      style="font-size: 9px; line-height: 1; margin-top: 2px"
+      style="font-size: 11px; margin-top: 6px"
     >
       <slot name="caption">{{ caption }}</slot>
     </div>
@@ -33,3 +33,8 @@ defineProps<{
   progressValue?: number;
 }>();
 </script>
+
+<style scoped>
+.stat-card { border: 1px solid #edf0f5; border-radius: 14px; min-height: 112px; transition: transform .2s ease, box-shadow .2s ease; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30, 50, 90, .10) !important; }
+</style>

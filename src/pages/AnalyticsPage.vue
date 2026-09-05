@@ -55,7 +55,7 @@
             v-model="filterMonth"
             outlined
             dense
-            :options="['This Month']"
+            :options="['This Month', 'Last Month', 'This Quarter', 'This Year', 'All Time']"
             style="width: 140px"
             bg-color="white"
             rounded
@@ -222,48 +222,18 @@ const logout = () => {
   router.push('/auth/login');
 };
 
-const csvCell = (value: unknown) => {
-  const text =
-    value == null
-      ? ''
-      : typeof value === 'object'
-        ? JSON.stringify(value)
-        : String(value as string | number | boolean);
-  return `"${text.replace(/"/g, '""')}"`;
-};
 const exportReport = () => {
   exporting.value = true;
   try {
-    const rows = analyticsStore.projectPerformance.map((project: any) => [
-      project.name,
-      project.status,
-      project.progress,
-      project.total_tasks,
-      project.completed_tasks,
-      project.overdue_tasks,
-      project.total_hours_logged,
-      project.total_estimated_hours,
-    ]);
-    const csv = [
-      [
-        'Project',
-        'Status',
-        'Progress (%)',
-        'Total Tasks',
-        'Completed Tasks',
-        'Overdue Tasks',
-        'Hours Logged',
-        'Estimated Hours',
-      ],
-      ...rows,
-    ]
-      .map((row) => row.map(csvCell).join(','))
-      .join('\r\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const generatedAt = new Date().toLocaleString();
+    const overview = analyticsStore.overview || {};
+    const rows = analyticsStore.projectPerformance.map((project: any) => `<tr><td><strong>${project.name || 'Unnamed project'}</strong></td><td>${project.status || '—'}</td><td>${Math.round(project.progress || 0)}%</td><td>${project.total_tasks || 0}</td><td>${project.completed_tasks || 0}</td><td>${project.overdue_tasks || 0}</td><td>${project.total_hours_logged || 0}h / ${project.total_estimated_hours || 0}h</td></tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>TASKY Analytics Report</title><style>body{font:14px Arial;color:#263238;margin:48px}header{border-bottom:4px solid #3949ab;padding-bottom:18px;margin-bottom:28px}h1{color:#283593;margin:0 0 8px}.meta{color:#607d8b}.metrics{display:flex;gap:12px;margin:22px 0}.metric{border:1px solid #e0e5ef;border-radius:8px;padding:14px;min-width:130px}.metric b{display:block;font-size:22px;color:#3949ab;margin-top:6px}table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#3949ab;color:white;text-align:left}th,td{padding:11px;border:1px solid #e0e5ef}tr:nth-child(even){background:#f6f8fc}footer{margin-top:36px;color:#78909c;font-size:12px}</style></head><body><header><h1>TASKY Analytics Report</h1><div class="meta">Reporting period: ${filterMonth.value} · Generated: ${generatedAt}</div></header><div class="metrics"><div class="metric">Total projects<b>${overview.totalProjects || 0}</b></div><div class="metric">Completion rate<b>${overview.taskCompletionRate || 0}%</b></div><div class="metric">Avg. progress<b>${overview.avgProjectProgress || 0}%</b></div><div class="metric">Team utilization<b>${overview.avgUtilization || 0}%</b></div></div><h2>Project performance</h2><table><thead><tr><th>Project</th><th>Status</th><th>Progress</th><th>Total tasks</th><th>Completed</th><th>Overdue</th><th>Hours logged / estimated</th></tr></thead><tbody>${rows || '<tr><td colspan="7">No project performance data available.</td></tr>'}</tbody></table><footer>Prepared by TASKY · This report is generated from the workspace analytics dashboard.</footer></body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tasky-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `tasky-analytics-report-${new Date().toISOString().slice(0, 10)}.html`;
     link.click();
     URL.revokeObjectURL(url);
     $q.notify({ type: 'positive', message: 'Analytics report exported' });

@@ -1,13 +1,14 @@
 <template>
   <q-dialog v-model="isOpen" persistent>
-    <q-card style="width: 500px; max-width: 90vw">
-      <q-card-section class="row items-center q-pb-none">
-        <div class="text-h6">{{ isEdit ? 'Edit Task' : 'Create New Task' }}</div>
+    <q-card class="create-dialog-card" style="width: 540px; max-width: 90vw">
+      <q-card-section class="create-dialog-header row items-center q-pb-md">
+        <q-avatar color="white" text-color="indigo" icon="add_task" size="42px" class="q-mr-md" />
+        <div><div class="text-h6 text-weight-bold">{{ isEdit ? 'Edit Task' : 'Create New Task' }}</div><div class="text-caption text-indigo-1">Turn the next piece of work into a clear action</div></div>
         <q-space />
         <q-btn icon="close" flat round dense v-close-popup />
       </q-card-section>
 
-      <q-card-section class="q-pt-md">
+      <q-card-section class="q-pa-lg">
         <q-form @submit="onSubmit" class="q-gutter-md">
           <q-select
             v-model="form.project_id"
@@ -38,7 +39,7 @@
             rows="3"
           />
 
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-md" style="gap:20px;">
             <div class="col-6">
               <q-select
                 v-model="form.status"
@@ -50,7 +51,7 @@
                 map-options
               />
             </div>
-            <div class="col-6">
+            <div class="col-5">
               <q-select
                 v-model="form.priority"
                 :options="priorityOptions"
@@ -63,7 +64,7 @@
             </div>
           </div>
 
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-md" style="gap:10px;">
             <div class="col-4">
               <q-input
                 v-model="form.expected_effort"
@@ -85,7 +86,7 @@
                 :rules="[(val) => val > 0 || 'Must be > 0']"
               />
             </div>
-            <div class="col-4">
+            <div class="col-3">
               <q-input
                 v-model="form.deadline"
                 label="Deadline"
@@ -110,14 +111,6 @@
             map-options
             :rules="[(val) => (val && val.length > 0) || 'Please assign at least one employee']"
             hint="Select employees to assign this task to"
-          />
-
-          <q-toggle
-            v-model="form.is_visible"
-            label="Visible to Employees"
-            color="primary"
-            dense
-            hint="When disabled, task is hidden from employee dashboards"
           />
 
           <q-slider
@@ -206,7 +199,6 @@ const form = ref({
   resources_needed: 1,
   deadline: '',
   assignee_ids: [] as number[],
-  is_visible: true,
 });
 
 watch(
@@ -233,8 +225,6 @@ watch(
           assignee_ids: props.taskToEdit.assignees
             ? props.taskToEdit.assignees.map((a: any) => a.id)
             : [],
-          is_visible:
-            props.taskToEdit.is_visible !== undefined ? props.taskToEdit.is_visible : true,
         };
       } else {
         isEdit.value = false;
@@ -253,7 +243,6 @@ watch(
           resources_needed: 1,
           deadline: '',
           assignee_ids: [],
-          is_visible: true,
         };
       }
     }
@@ -288,3 +277,8 @@ const onSubmit = async () => {
   }
 };
 </script>
+
+<style scoped>
+.create-dialog-card { border-radius: 18px; overflow: hidden; }
+.create-dialog-header { color: white; background: linear-gradient(135deg, #3949ab, #5c6bc0); }
+</style>

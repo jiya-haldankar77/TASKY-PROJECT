@@ -65,7 +65,6 @@
         </q-banner>
 
         <div class="row justify-between items-center q-mb-md">
-          <q-checkbox v-model="form.rememberMe" label="Remember me" />
           <q-btn
             flat
             no-caps
@@ -273,6 +272,12 @@ const handleLogin = async () => {
     console.log('Login result:', result);
 
     if (result.success && result.user) {
+      const selectedRole = form.role === 'Project Manager' ? 'pm' : 'employee';
+      if (result.user.role !== selectedRole) {
+        alert(`This account is registered as ${result.user.role === 'pm' ? 'a Project Manager' : 'an Employee'}. Please select the correct role.`);
+        generateCaptcha();
+        return;
+      }
       // Reset failed attempts on successful login
       failedAttempts.value = 0;
       lockoutEndTime.value = null;

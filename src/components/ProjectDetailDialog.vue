@@ -224,7 +224,9 @@
                 <q-item
                   v-for="member in projectStore.currentProject.team"
                   :key="member.id"
-                  class="q-px-none"
+                  class="q-px-none cursor-pointer"
+                  clickable
+                  @click="showEmployeePerformance(member)"
                 >
                   <q-item-section avatar>
                     <q-avatar size="32px">
@@ -398,6 +400,8 @@
       :initial-project-id="projectStore.currentProject?.id"
       @saved="projectStore.fetchProjectById(projectStore.currentProject.id)"
     />
+
+    <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" />
   </q-dialog>
 </template>
 
@@ -407,6 +411,7 @@ import { useProjectStore } from '../stores/projectStore';
 import { date } from 'quasar';
 import { useRouter } from 'vue-router';
 import CreateTaskDialog from './CreateTaskDialog.vue';
+import EmployeePerformanceReport from './EmployeePerformanceReport.vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -420,6 +425,13 @@ const router = useRouter();
 const isOpen = ref(props.modelValue);
 const taskFilter = ref('all');
 const showCreateTaskDialog = ref(false); // To be fully implemented when doing tasks
+const showPerformanceDialog = ref(false);
+const selectedEmployee = ref<any>(null);
+
+const showEmployeePerformance = (member: any) => {
+  selectedEmployee.value = member;
+  showPerformanceDialog.value = true;
+};
 
 watch(
   () => props.modelValue,
