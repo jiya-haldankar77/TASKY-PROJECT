@@ -1140,7 +1140,7 @@ function setScale(scale: 'hour' | 'day' | 'week' | 'month') {
 
 
 function expandAll() {
-  gantt.eachTask((task) => {
+  gantt.eachTask((task: any) => {
     task.$open = true;
     task.open = true;
     if (String(task.id).startsWith('proj_')) {
@@ -1151,7 +1151,7 @@ function expandAll() {
 }
 
 function collapseAll() {
-  gantt.eachTask((task) => {
+  gantt.eachTask((task: any) => {
     task.$open = false;
     task.open = false;
     if (String(task.id).startsWith('proj_')) {

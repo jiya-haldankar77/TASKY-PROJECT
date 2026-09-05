@@ -125,6 +125,21 @@
                 </div>
                 <div class="text-caption">Critical items that require immediate PM action</div>
               </q-card-section>
+              <q-tabs
+                v-model="attentionTab"
+                dense
+                class="text-red-9 bg-red-1"
+                active-color="white"
+                active-bg-color="red-4"
+                indicator-color="transparent"
+                align="justify"
+                narrow-indicator
+              >
+                <q-tab name="all" label="All" />
+                <q-tab name="project" label="Projects" />
+                <q-tab name="employee" label="Employees" />
+                <q-tab name="task" label="Tasks" />
+              </q-tabs>
 
               <q-card-section
                 class="q-pt-none q-px-md q-pb-md"
@@ -132,10 +147,11 @@
               >
                 <q-list separator v-if="hasAttentionItems">
                   <!-- Delayed Projects -->
-                  <template
-                    v-for="project in filteredAttentionItems.delayedProjects"
-                    :key="'proj-' + project.id"
-                  >
+                  <template v-if="attentionTab === 'all' || attentionTab === 'project'">
+                    <template
+                      v-for="project in filteredAttentionItems.delayedProjects"
+                      :key="'proj-' + project.id"
+                    >
                     <q-item class="q-py-md">
                       <q-item-section avatar>
                         <q-avatar color="red-1" text-color="red" icon="folder" />
@@ -159,13 +175,15 @@
                         />
                       </q-item-section>
                     </q-item>
+                    </template>
                   </template>
 
                   <!-- Overloaded Resources -->
-                  <template
-                    v-for="resource in filteredAttentionItems.overloadedResources"
-                    :key="'res-' + resource.id"
-                  >
+                  <template v-if="attentionTab === 'all' || attentionTab === 'employee'">
+                    <template
+                      v-for="resource in filteredAttentionItems.overloadedResources"
+                      :key="'res-' + resource.id"
+                    >
                     <q-item class="q-py-md">
                       <q-item-section avatar>
                         <q-avatar>
@@ -195,13 +213,15 @@
                         />
                       </q-item-section>
                     </q-item>
+                    </template>
                   </template>
 
                   <!-- Overdue Tasks -->
-                  <template
-                    v-for="task in filteredAttentionItems.overdueTasks"
-                    :key="'task-' + task.id"
-                  >
+                  <template v-if="attentionTab === 'all' || attentionTab === 'task'">
+                    <template
+                      v-for="task in filteredAttentionItems.overdueTasks"
+                      :key="'task-' + task.id"
+                    >
                     <q-item class="q-py-md">
                       <q-item-section avatar>
                         <q-avatar color="deep-orange-1" text-color="deep-orange" icon="task" />
@@ -227,6 +247,7 @@
                         />
                       </q-item-section>
                     </q-item>
+                    </template>
                   </template>
                 </q-list>
 
@@ -262,6 +283,7 @@
                     v-for="user in dashboardStore.users"
                     :key="user.id"
                     class="q-py-md cursor-pointer"
+                    clickable
                     @click="showEmployeePerformance(user)"
                   >
                     <q-item-section avatar>
@@ -348,21 +370,7 @@
     </q-tab-panels>
 
     <!-- Employee Performance Dialog -->
-    <!-- Temporarily disabled to debug blank page issue -->
-    <!-- <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" /> -->
-    <q-dialog v-model="showPerformanceDialog">
-      <q-card>
-        <q-card-section>
-          <div class="text-h6">Employee Performance</div>
-          <div v-if="selectedEmployee">
-            {{ selectedEmployee.first_name }} {{ selectedEmployee.last_name }}
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Close" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" />
 
     <!-- Task Detail Dialog -->
     <q-dialog v-model="showTaskDetailDialog">
@@ -414,7 +422,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '../stores/authStore';
 import { useDashboardStore } from '../stores/dashboardStore';
 import StatCard from '../components/StatCard.vue';
-// import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue'; // Temporarily disabled
+import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue';
 const authStore = useAuthStore();
 const { logout } = authStore;
 const dashboardStore = useDashboardStore();
@@ -423,6 +431,7 @@ const searchQuery = ref('');
 const selectedEmployee = ref<any>(null);
 const showPerformanceDialog = ref(false);
 const activeTab = ref('overview');
+const attentionTab = ref('all');
 const completedTasks = ref<any[]>([]);
 const loadingCompleted = ref(false);
 const selectedTask = ref<any>(null);
@@ -458,10 +467,14 @@ const filteredAttentionItems = computed(() => {
 });
 
 const hasAttentionItems = computed(() => {
+  const d = dashboardStore.attentionItems;
+  if (attentionTab.value === 'project') return d.delayedProjects.length > 0;
+  if (attentionTab.value === 'employee') return d.overloadedResources.length > 0;
+  if (attentionTab.value === 'task') return d.overdueTasks.length > 0;
   return (
-    dashboardStore.attentionItems.delayedProjects.length > 0 ||
-    dashboardStore.attentionItems.overloadedResources.length > 0 ||
-    dashboardStore.attentionItems.overdueTasks.length > 0
+    d.delayedProjects.length > 0 ||
+    d.overloadedResources.length > 0 ||
+    d.overdueTasks.length > 0
   );
 });
 
@@ -518,6 +531,7 @@ function formatDate(date: string) {
 }
 
 function showEmployeePerformance(user: any) {
+  console.log('Clicked user for performance report:', user);
   selectedEmployee.value = user;
   showPerformanceDialog.value = true;
 }

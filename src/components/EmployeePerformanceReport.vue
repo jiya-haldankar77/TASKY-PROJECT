@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="isOpen" maximized transition-show="slide-up" transition-hide="slide-down">
+  <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)" maximized transition-show="slide-up" transition-hide="slide-down">
     <q-card class="bg-grey-1 column" v-if="employee">
       <!-- Header -->
       <q-card-section
@@ -205,7 +205,6 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:modelValue']);
 
-const isOpen = ref(props.modelValue);
 const loading = ref(false);
 const performanceData = ref<any>({});
 
@@ -216,16 +215,11 @@ const barChart = ref<HTMLElement>();
 watch(
   () => props.modelValue,
   (val) => {
-    isOpen.value = val;
     if (val && props.employee) {
       loadPerformanceData();
     }
   },
 );
-
-watch(isOpen, (val) => {
-  emit('update:modelValue', val);
-});
 
 const performanceColor = computed(() => {
   const score = performanceData.value.overallScore || 0;
