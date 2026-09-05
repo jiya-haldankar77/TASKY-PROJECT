@@ -303,12 +303,34 @@ export const useTaskStore = defineStore('taskStore', {
         });
         const data = await response.json();
         if (data.success) {
-          this.workLogs.push(data.log);
+          this.workLogs.unshift(data.log);
           return data.log;
         }
         throw new Error(data.error);
       } catch (error) {
         console.error('Error adding work log:', error);
+        throw error;
+      }
+    },
+
+    async addTaskComment(taskId: number | string, content: string) {
+      try {
+        const authStore = useAuthStore();
+        const response = await fetch(`http://localhost:3001/api/employee/tasks/${taskId}/comment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({ content }),
+        });
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error);
+        }
+        return true;
+      } catch (error) {
+        console.error('Error adding task comment:', error);
         throw error;
       }
     },

@@ -335,7 +335,7 @@ function renderMeterChart() {
           .outerRadius(80)
           .startAngle(-Math.PI / 2)
           .endAngle(-Math.PI / 2 + Math.PI * interpolate(t));
-        return valueArcTween as any;
+        return (valueArcTween({} as any) || '') as string;
       };
     });
 }

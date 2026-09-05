@@ -263,10 +263,25 @@
         <!-- Right Column: Tasks -->
         <div class="col-8">
           <q-card flat bordered class="bg-white full-height flex column">
-            <q-card-section class="row items-center justify-between q-pb-none">
-              <div class="text-subtitle1 text-weight-bold">
-                Tasks ({{ projectStore.currentProject.tasks?.length || 0 }})
-              </div>
+            <q-tabs
+              v-model="rightTab"
+              dense
+              class="text-grey-7 q-pt-sm q-px-md"
+              active-color="primary"
+              indicator-color="primary"
+              align="left"
+            >
+              <q-tab name="tasks" label="Tasks" />
+              <q-tab name="timeline" label="Timeline" />
+            </q-tabs>
+            <q-separator />
+
+            <q-tab-panels v-model="rightTab" animated class="transparent" style="flex: 1 1 0; min-height: 0">
+              <q-tab-panel name="tasks" class="q-pa-none flex column" style="overflow: hidden">
+                <q-card-section class="row items-center justify-between q-pb-none" style="flex: 0 0 auto">
+                  <div class="text-subtitle1 text-weight-bold">
+                    Tasks ({{ projectStore.currentProject.tasks?.length || 0 }})
+                  </div>
 
               <!-- Simple Status Filter -->
               <q-btn-toggle
@@ -384,6 +399,37 @@
                 <div class="text-caption">Adjust filters or create a new task.</div>
               </div>
             </q-card-section>
+          </q-tab-panel>
+
+          <!-- Timeline Tab -->
+          <q-tab-panel name="timeline" class="q-pa-md flex column" style="overflow-y: auto">
+            <q-timeline color="primary">
+              <template v-for="(item, index) in timelineItems" :key="index">
+                <q-timeline-entry
+                  :title="item.type === 'comment' ? 'Comment' : 'Progress Update'"
+                  :subtitle="formatDateWithTime(item.date)"
+                  :icon="item.type === 'comment' ? 'comment' : 'trending_up'"
+                  :color="item.type === 'comment' ? 'grey-7' : 'blue'"
+                >
+                  <div class="row items-center q-mb-sm" v-if="item.first_name">
+                    <q-avatar size="24px" class="q-mr-sm">
+                      <img :src="item.avatar || `https://i.pravatar.cc/150?img=${item.user_id || '0'}`" />
+                    </q-avatar>
+                    <span class="text-weight-medium text-caption">{{ item.first_name }} {{ item.last_name }}</span>
+                    <span class="text-grey-7 q-ml-sm text-caption">on {{ item.task_title }}</span>
+                  </div>
+                  <div class="text-body2" style="white-space: pre-wrap">{{ item.type === 'comment' ? item.comment : (item.notes || `Progress updated from ${item.previous_progress}% to ${item.new_progress}%`) }}</div>
+                </q-timeline-entry>
+              </template>
+              <div
+                v-if="timelineItems.length === 0"
+                class="text-caption text-grey text-center q-pa-md"
+              >
+                No timeline events recorded yet.
+              </div>
+            </q-timeline>
+          </q-tab-panel>
+        </q-tab-panels>
           </q-card>
         </div>
       </div>
@@ -423,10 +469,18 @@ const projectStore = useProjectStore();
 const router = useRouter();
 
 const isOpen = ref(props.modelValue);
+const rightTab = ref('tasks');
 const taskFilter = ref('all');
 const showCreateTaskDialog = ref(false); // To be fully implemented when doing tasks
 const showPerformanceDialog = ref(false);
 const selectedEmployee = ref<any>(null);
+
+const formatDateWithTime = (val: string) => {
+  if (!val) return 'None';
+  return date.formatDate(val, 'MMM D, YYYY h:mm A');
+};
+
+const timelineItems = computed(() => projectStore.currentProjectTimeline || []);
 
 const showEmployeePerformance = (member: any) => {
   selectedEmployee.value = member;
@@ -439,6 +493,7 @@ watch(
     isOpen.value = val;
     if (val && props.projectId) {
       await projectStore.fetchProjectById(props.projectId);
+      await projectStore.fetchProjectTimeline(props.projectId);
     }
   },
 );

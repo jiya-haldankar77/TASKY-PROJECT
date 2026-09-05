@@ -221,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { QTableProps } from 'quasar';
 import { useResourceStore } from '../stores/resourceStore';
 import ResourceDetailDialog from './ResourceDetailDialog.vue';
@@ -237,6 +237,12 @@ const resourceStore = useResourceStore();
 const filterMonth = ref('This Month');
 const dialogOpen = ref(false);
 const selectedResourceId = ref(0);
+
+onMounted(() => {
+  if (resourceStore.resources.length === 0) {
+    resourceStore.fetchResources();
+  }
+});
 
 const openDialog = (id: number) => {
   console.log('Opening dialog for resource ID:', id);

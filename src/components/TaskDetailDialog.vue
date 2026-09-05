@@ -81,14 +81,6 @@
                     <div class="text-subtitle2 text-grey-7">Progress</div>
                     <div class="row items-center q-gutter-x-sm">
                       <div class="text-weight-bold">{{ taskStore.currentTask.progress || 0 }}%</div>
-                      <q-btn
-                        size="sm"
-                        flat
-                        round
-                        icon="edit"
-                        color="primary"
-                        @click="showProgressDialog = true"
-                      />
                     </div>
                   </div>
                   <q-linear-progress
@@ -257,45 +249,7 @@
       <q-spinner-dots size="40px" color="primary" />
     </q-card>
 
-    <!-- Progress Dialog -->
-    <q-dialog v-model="showProgressDialog">
-      <q-card style="width: 400px; max-width: 90vw">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Adjust Progress</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
 
-        <q-card-section class="q-pt-md">
-          <div class="q-mb-md">
-            <div class="row justify-between text-caption q-mb-xs">
-              <span class="text-grey-7">New Progress</span>
-              <span class="text-weight-bold">{{ newProgress }}%</span>
-            </div>
-            <q-slider v-model="newProgress" :min="0" :max="100" color="primary" label />
-          </div>
-
-          <q-input
-            v-model="progressNote"
-            type="textarea"
-            outlined
-            label="Add a note (optional)"
-            rows="3"
-          />
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            @click="saveProgress"
-            :loading="savingProgress"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-dialog>
 </template>
 
@@ -315,10 +269,6 @@ const taskStore = usePmTaskStore();
 const isOpen = ref(props.modelValue);
 const tab = ref('details');
 
-const showProgressDialog = ref(false);
-const newProgress = ref(0);
-const progressNote = ref('');
-const savingProgress = ref(false);
 
 const simulationLoading = ref(false);
 const simulationResult = ref('');
@@ -329,7 +279,6 @@ watch(
     isOpen.value = val;
     if (val && props.taskId) {
       await taskStore.fetchTaskById(props.taskId);
-      newProgress.value = parseFloat(taskStore.currentTask?.progress) || 0;
     }
   },
 );
@@ -428,21 +377,7 @@ const timelineItems = computed(() => {
   return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 });
 
-const saveProgress = async () => {
-  if (!taskStore.currentTask) return;
-  savingProgress.value = true;
-  try {
-    await taskStore.adjustProgress(taskStore.currentTask.id, newProgress.value, progressNote.value);
-    showProgressDialog.value = false;
-    progressNote.value = '';
-    // Refresh task to get new history
-    await taskStore.fetchTaskById(taskStore.currentTask.id);
-  } catch (error) {
-    console.error('Error saving progress:', error);
-  } finally {
-    savingProgress.value = false;
-  }
-};
+
 
 const handleDelete = async () => {
   if (!taskStore.currentTask) return;

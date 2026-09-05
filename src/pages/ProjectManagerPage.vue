@@ -36,45 +36,7 @@
       </div>
     </div>
 
-    <!-- Summary Cards -->
-    <div class="row q-col-gutter-md q-mb-md" style="flex: 0 0 auto">
-      <div class="col-3">
-        <StatCard
-          title="At Risk Projects"
-          :value="String(dashboardStore.stats?.atRiskProjects ?? 0)"
-          color="red"
-          icon="o_warning"
-          caption="Needs immediate attention"
-        />
-      </div>
-      <div class="col-3">
-        <StatCard
-          title="Overloaded Resources"
-          :value="String(dashboardStore.stats?.overloadedResources ?? 0)"
-          color="orange"
-          icon="o_groups"
-          caption="Working across multiple projects"
-        />
-      </div>
-      <div class="col-3">
-        <StatCard
-          title="Overdue Tasks"
-          :value="String(dashboardStore.stats?.overdueTasks ?? 0)"
-          color="deep-orange"
-          icon="o_schedule"
-          caption="Past deadline"
-        />
-      </div>
-      <div class="col-3">
-        <StatCard
-          title="Pending Reviews"
-          :value="String(pendingReviewsCount)"
-          color="blue"
-          icon="o_rate_review"
-          caption="Tasks awaiting final review"
-        />
-      </div>
-    </div>
+
 
     <!-- Tabs -->
     <q-tabs
@@ -123,9 +85,9 @@
                 narrow-indicator
               >
                 <q-tab name="all" label="All" />
-                <q-tab name="project" label="Projects" />
-                <q-tab name="employee" label="Employees" />
-                <q-tab name="task" label="Tasks" />
+                <q-tab name="project" :label="`Projects (${dashboardStore.stats?.atRiskProjects ?? 0})`" />
+                <q-tab name="employee" :label="`Employees (${dashboardStore.stats?.overloadedResources ?? 0})`" />
+                <q-tab name="task" :label="`Tasks (${dashboardStore.stats?.overdueTasks ?? 0})`" />
               </q-tabs>
               <q-card-section class="q-pb-sm q-pt-sm bg-red-1">
                 <q-input v-model="searchQuery" outlined dense bg-color="white" placeholder="Search attention items..." class="attention-search">
@@ -260,6 +222,9 @@
                   <div class="row items-center">
                     <q-icon name="groups" size="24px" class="q-mr-sm" />
                     <div class="text-h6 text-weight-bold">Team Members</div>
+                    <q-badge color="orange" class="q-ml-sm" rounded>
+                      {{ dashboardStore.stats?.pendingReviews ?? 0 }} Reviews Pending
+                    </q-badge>
                   </div>
                   <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
                 </div>
@@ -418,7 +383,6 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '../stores/authStore';
 import { useDashboardStore } from '../stores/dashboardStore';
-import StatCard from '../components/StatCard.vue';
 import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue';
 const authStore = useAuthStore();
 const { logout } = authStore;
@@ -446,7 +410,7 @@ onMounted(() => {
   fetchCompletedReviews();
 });
 
-const pendingReviewsCount = computed(() => 0);
+
 const filteredUsers = computed(() => {
   const query = teamSearchQuery.value.toLowerCase().trim();
   if (!query) return dashboardStore.users;

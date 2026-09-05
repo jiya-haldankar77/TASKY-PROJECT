@@ -186,6 +186,69 @@ export default function projectRoutes(pool) {
     }
   });
 
+  // GET /api/pm/projects/:id/timeline
+  router.get('/:id/timeline', async (req, res) => {
+    try {
+      const orgId = req.user.org_id;
+      const projectId = req.params.id;
+
+      const [projects] = await pool.execute(
+        'SELECT id FROM project WHERE id = ? AND org_id = ?',
+        [projectId, orgId]
+      );
+      if (projects.length === 0) {
+        return res.status(404).json({ success: false, error: 'Project not found' });
+      }
+
+      const [progressUpdates] = await pool.execute(
+        `
+        SELECT pu.id, pu.task_id, pu.previous_progress, pu.new_progress, pu.notes, pu.created_at, 
+               u.first_name, u.last_name, u.avatar, t.title as task_title
+        FROM progress_update pu
+        JOIN user u ON u.id = pu.user_id
+        JOIN task t ON t.id = pu.task_id
+        WHERE t.project_id = ?
+        ORDER BY pu.created_at DESC
+        `,
+        [projectId]
+      );
+
+      const [comments] = await pool.execute(
+        `
+        SELECT c.id, c.task_id, c.content as comment, c.created_at, 
+               u.first_name, u.last_name, u.avatar, t.title as task_title
+        FROM task_comment c
+        JOIN user u ON u.id = c.user_id
+        JOIN task t ON t.id = c.task_id
+        WHERE t.project_id = ?
+        ORDER BY c.created_at DESC
+        `,
+        [projectId]
+      );
+
+      const timeline = [
+        ...progressUpdates.map((p) => ({
+          ...p,
+          type: 'progress',
+          date: p.created_at,
+        })),
+        ...comments.map((c) => ({
+          ...c,
+          type: 'comment',
+          date: c.created_at,
+        })),
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      res.json({
+        success: true,
+        timeline: timeline
+      });
+    } catch (error) {
+      console.error('Get project timeline error:', error);
+      res.status(500).json({ success: false, error: 'Server error', message: error.message, stack: error.stack });
+    }
+  });
+
   // POST /api/pm/projects
   router.post('/', async (req, res) => {
     try {

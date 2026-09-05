@@ -4,6 +4,7 @@ export const useProjectStore = defineStore('project', {
   state: () => ({
     projects: [] as any[],
     currentProject: null as any | null,
+    currentProjectTimeline: [] as any[],
     loading: false,
     error: null as string | null,
   }),
@@ -60,7 +61,19 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
-
+    async fetchProjectTimeline(id: string) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/pm/projects/${id}/timeline`, {
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.currentProjectTimeline = data.timeline || [];
+        }
+      } catch (err) {
+        console.error('Error fetching project timeline:', err);
+      }
+    },
 
     async createProject(projectData: any) {
       try {

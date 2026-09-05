@@ -763,6 +763,27 @@
             placeholder="What did you work on today?"
           />
 
+          <!-- COMMENTS -->
+
+          <div class="text-subtitle1 text-weight-bold q-mt-xl q-mb-md">Task Comment</div>
+
+          <div class="row q-gutter-sm">
+            <q-input
+              v-model="newComment"
+              outlined
+              dense
+              class="col"
+              placeholder="Add a comment to the timeline..."
+            />
+            <q-btn
+              color="primary"
+              icon="send"
+              dense
+              flat
+              @click="submitComment"
+            />
+          </div>
+
           <!-- DEADLINE -->
 
           <div
@@ -987,6 +1008,47 @@ const selectedTask = ref<Task | null>(null);
 // ============================================================
 
 const tasks = ref<Task[]>([]);
+
+const newComment = ref('');
+
+const submitComment = async () => {
+  if (!selectedTask.value || !newComment.value.trim()) return;
+
+  try {
+    const authStore = useAuthStore();
+    const response = await fetch(`http://localhost:3001/api/employee/tasks/${selectedTask.value.id}/comment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ content: newComment.value.trim() }),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      $q.notify({
+        message: 'Comment added successfully',
+        color: 'positive',
+        icon: 'check_circle',
+      });
+      newComment.value = '';
+    } else {
+      $q.notify({
+        message: result.error || 'Failed to add comment',
+        color: 'negative',
+        icon: 'error',
+      });
+    }
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    $q.notify({
+      message: 'Error adding comment',
+      color: 'negative',
+      icon: 'error',
+    });
+  }
+};
 
 const { user } = useAuthStore();
 

@@ -113,17 +113,7 @@
             hint="Select employees to assign this task to"
           />
 
-          <q-slider
-            v-if="isEdit"
-            v-model="form.progress"
-            :min="0"
-            :max="100"
-            label
-            label-always
-            color="primary"
-            class="q-mt-lg q-px-md"
-          />
-          <div v-if="isEdit" class="text-center text-caption text-grey-7 q-mb-md">Progress (%)</div>
+
 
           <div class="row justify-end q-mt-lg">
             <q-btn label="Cancel" color="grey" flat v-close-popup class="q-mr-sm" />

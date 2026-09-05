@@ -102,6 +102,60 @@ pool
     console.error('Database connection failed:', err);
   });
 
+// Helper to recalculate and update project progress based on tasks
+const updateProjectProgress = async (connection, taskId) => {
+  try {
+    const [taskRows] = await connection.execute('SELECT project_id FROM task WHERE id = ?', [taskId]);
+    if (taskRows.length > 0) {
+      const projectId = taskRows[0].project_id;
+      const [allTasks] = await connection.execute('SELECT progress FROM task WHERE project_id = ?', [projectId]);
+      
+      let avgProgress = 0;
+      if (allTasks.length > 0) {
+        const totalProgress = allTasks.reduce((sum, t) => sum + parseFloat(t.progress || 0), 0);
+        avgProgress = Math.round(totalProgress / allTasks.length);
+      }
+      
+      await connection.execute('UPDATE project SET progress = ? WHERE id = ?', [avgProgress, projectId]);
+    }
+  } catch (error) {
+    console.error('Error updating project progress:', error);
+  }
+};
+
+app.get('/api/pm/backfill-progress', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [projects] = await connection.execute('SELECT id, name, progress FROM project');
+    let count = 0;
+    for (const p of projects) {
+      const [tasks] = await connection.execute('SELECT id, title, progress FROM task WHERE project_id = ?', [p.id]);
+      let avg = 0;
+      if (tasks.length > 0) {
+        const sum = tasks.reduce((acc, t) => acc + parseFloat(t.progress || 0), 0);
+        avg = Math.round(sum / tasks.length);
+      }
+      await connection.execute('UPDATE project SET progress = ? WHERE id = ?', [avg, p.id]);
+      count++;
+    }
+    connection.release();
+    res.json({ success: true, count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// Trigger reload
+app.get('/api/pm/debug-progress', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [projects] = await connection.execute('SELECT id, name, progress FROM project');
+    connection.release();
+    res.json({ projects });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Helper function to get user by employee code or email
 async function getUserByIdentifier(identifier) {
   const connection = await pool.getConnection();
@@ -655,6 +709,10 @@ app.put('/api/employee/subtasks/:id', async (req, res) => {
       if (subtask && subtask.length > 0) {
         const taskId = subtask[0].task_id;
 
+        // Get previous progress
+        const [taskRows] = await connection.execute('SELECT progress FROM task WHERE id = ?', [taskId]);
+        const previousProgress = taskRows.length > 0 ? taskRows[0].progress : 0;
+
         // Calculate new progress based on completed subtasks
         const [subtasks] = await connection.execute(
           'SELECT completed FROM subtask WHERE task_id = ?',
@@ -670,6 +728,17 @@ app.put('/api/employee/subtasks/:id', async (req, res) => {
           'UPDATE task SET progress = ? WHERE id = ?',
           [progress, taskId]
         );
+        
+        await updateProjectProgress(connection, taskId);
+
+        // Record progress update if changed
+        if (progress !== previousProgress) {
+          const userId = req.user?.id || 1;
+          await connection.execute(
+            'INSERT INTO progress_update (task_id, user_id, previous_progress, new_progress, notes) VALUES (?, ?, ?, ?, ?)',
+            [taskId, userId, previousProgress, progress, 'Updated progress via subtask']
+          );
+        }
 
         res.json({
           success: true,
@@ -703,6 +772,10 @@ app.post('/api/employee/tasks/:id/subtasks', async (req, res) => {
         [taskId, title, 'not-started', 0, 0]
       );
 
+      // Get previous progress
+      const [taskRows] = await connection.execute('SELECT progress FROM task WHERE id = ?', [taskId]);
+      const previousProgress = taskRows.length > 0 ? taskRows[0].progress : 0;
+
       // Recalculate parent task progress
       const [subtasks] = await connection.execute(
         'SELECT completed FROM subtask WHERE task_id = ?',
@@ -717,6 +790,17 @@ app.post('/api/employee/tasks/:id/subtasks', async (req, res) => {
         'UPDATE task SET progress = ? WHERE id = ?',
         [progress, taskId]
       );
+      
+      await updateProjectProgress(connection, taskId);
+
+      // Record progress update if changed
+      if (progress !== previousProgress) {
+        const userId = req.user?.id || 1;
+        await connection.execute(
+          'INSERT INTO progress_update (task_id, user_id, previous_progress, new_progress, notes) VALUES (?, ?, ?, ?, ?)',
+          [taskId, userId, previousProgress, progress, 'Added new subtask']
+        );
+      }
 
       res.json({
         success: true,
@@ -768,6 +852,8 @@ app.delete('/api/employee/subtasks/:id', async (req, res) => {
         'UPDATE task SET progress = ? WHERE id = ?',
         [progress, taskId]
       );
+      
+      await updateProjectProgress(connection, taskId);
 
       res.json({
         success: true,
@@ -1031,35 +1117,119 @@ app.get('/api/pm/tasks/:id/review-status', async (req, res) => {
 app.get('/api/pm/employee-performance/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    const connection = await pool.getConnection();
     
-    // In a real app, query the database. Returning mock data for now to fix the blank page
-    res.json({
-      success: true,
-      performance: {
-        overallScore: Math.floor(Math.random() * 20) + 75,
-        taskStats: {
-          completed: 15,
-          'in-progress': 5,
-          'in-review': 2,
-          'not-started': 3,
-          blocked: 1
-        },
-        weeklyProgress: Array.from({length: 8}).map((_, i) => ({
-          week: `W${i+1}`,
-          hours: Math.floor(Math.random() * 15) + 25
-        })),
-        totalTasks: 26,
-        completedTasks: 15,
-        overdueTasks: 2,
-        hoursLogged: 120,
-        utilization: 92,
-        recentTasks: [
-          { id: 1, title: 'Update Schema', project_name: 'Database Migration', status: 'completed' },
-          { id: 2, title: 'Implement Auth', project_name: 'Backend API', status: 'in-progress' },
-          { id: 3, title: 'Review PRs', project_name: 'Frontend', status: 'in-review' }
-        ]
+    try {
+      // 1. Task Statistics (Status Breakdown)
+      const [statusRows] = await connection.execute(
+        `SELECT t.status, COUNT(*) as count 
+         FROM task t 
+         JOIN task_assignment ta ON t.id = ta.task_id 
+         WHERE ta.user_id = ? AND ta.is_active = 1
+         GROUP BY t.status`,
+        [userId]
+      );
+      
+      const taskStats = {
+        'completed': 0,
+        'in-progress': 0,
+        'in-review': 0,
+        'not-started': 0,
+        'blocked': 0
+      };
+      
+      statusRows.forEach(row => {
+        taskStats[row.status] = row.count;
+      });
+
+      // 2. Total, Completed, and Overdue Tasks
+      const [taskAggRows] = await connection.execute(
+        `SELECT 
+           COUNT(*) as totalTasks, 
+           SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completedTasks, 
+           SUM(CASE WHEN t.status != 'completed' AND t.deadline < CURDATE() THEN 1 ELSE 0 END) as overdueTasks
+         FROM task t 
+         JOIN task_assignment ta ON t.id = ta.task_id 
+         WHERE ta.user_id = ? AND ta.is_active = 1`,
+        [userId]
+      );
+      
+      const totalTasks = taskAggRows[0].totalTasks || 0;
+      const completedTasks = taskAggRows[0].completedTasks || 0;
+      const overdueTasks = taskAggRows[0].overdueTasks || 0;
+
+      // 3. Hours Logged & Utilization
+      const [analyticsRows] = await connection.execute(
+        `SELECT total_hours_logged, total_expected_effort
+         FROM vw_employee_analytics
+         WHERE user_id = ?`,
+        [userId]
+      );
+      
+      const hoursLogged = analyticsRows.length > 0 ? parseFloat(analyticsRows[0].total_hours_logged) : 0;
+      const expectedEffort = analyticsRows.length > 0 ? parseFloat(analyticsRows[0].total_expected_effort) : 0;
+      const utilization = expectedEffort > 0 ? Math.round((hoursLogged / expectedEffort) * 100) : 0;
+
+      // 4. Weekly Progress (Last 8 Weeks)
+      const [weeklyRows] = await connection.execute(
+        `SELECT 
+           YEARWEEK(log_date, 1) as week_num, 
+           SUM(hours_spent) as hours 
+         FROM daily_work_log 
+         WHERE user_id = ? AND log_date >= DATE_SUB(CURDATE(), INTERVAL 8 WEEK) 
+         GROUP BY YEARWEEK(log_date, 1) 
+         ORDER BY week_num ASC`,
+        [userId]
+      );
+      
+      const weeklyProgress = weeklyRows.map(r => ({
+        week: 'W' + String(r.week_num).slice(-2),
+        hours: parseFloat(r.hours)
+      }));
+      
+      if (weeklyProgress.length === 0) {
+         weeklyProgress.push({ week: 'Current', hours: 0 });
       }
-    });
+
+      // 5. Recent Tasks
+      const [recentTasksRows] = await connection.execute(
+        `SELECT t.id, t.title, p.name as project_name, t.status 
+         FROM task t 
+         JOIN task_assignment ta ON t.id = ta.task_id 
+         JOIN project p ON t.project_id = p.id 
+         WHERE ta.user_id = ? AND ta.is_active = 1
+         ORDER BY t.updated_at DESC 
+         LIMIT 5`,
+        [userId]
+      );
+
+      // 6. Overall Score
+      let overallScore = 40;
+      if (totalTasks > 0) {
+        overallScore += (completedTasks / totalTasks) * 40;
+        overallScore += Math.max(0, 20 - (overdueTasks / totalTasks) * 20);
+      } else {
+        overallScore = 75; 
+      }
+      overallScore = Math.round(overallScore);
+
+      res.json({
+        success: true,
+        performance: {
+          overallScore,
+          taskStats,
+          weeklyProgress,
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          hoursLogged,
+          utilization,
+          recentTasks: recentTasksRows
+        }
+      });
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     console.error('Error fetching employee performance:', error);
     res.status(500).json({ success: false, error: 'Server error' });
@@ -1305,6 +1475,8 @@ app.put('/api/employee/tasks/:id', async (req, res) => {
         `UPDATE task SET progress = ?, status = ?, actual_effort = ? WHERE id = ?`,
         [progress, status, actual_effort, taskId]
       );
+      
+      await updateProjectProgress(connection, taskId);
 
       // If hours_spent provided, log it
       if (hours_spent && hours_spent > 0) {
@@ -1321,6 +1493,33 @@ app.put('/api/employee/tasks/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Update employee task error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /api/employee/tasks/:id/comment - Add comment to task
+app.post('/api/employee/tasks/:id/comment', async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const userId = req.user.id;
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ success: false, error: 'Comment content is required' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.execute(
+        'INSERT INTO task_comment (task_id, user_id, content, is_sticky) VALUES (?, ?, ?, 0)',
+        [taskId, userId, content]
+      );
+      res.json({ success: true });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Add employee comment error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
