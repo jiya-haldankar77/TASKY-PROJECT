@@ -426,7 +426,7 @@ watch(
   async (val) => {
     isOpen.value = val;
     if (val && props.projectId) {
-      await projectStore.fetchProjectDetails(props.projectId);
+      await projectStore.fetchProjectById(props.projectId);
     }
   },
 );

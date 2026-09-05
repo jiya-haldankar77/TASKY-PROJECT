@@ -114,18 +114,7 @@
           <q-item-section>Organisation</q-item-section>
         </q-item>
 
-        <q-item
-          clickable
-          v-ripple
-          @click="navigateToEmployeeDashboard"
-          class="nav-item rounded-borders"
-          style="border-radius: 12px; font-weight: 500"
-        >
-          <q-item-section avatar>
-            <q-icon name="o_people" />
-          </q-item-section>
-          <q-item-section>Employee Dashboard</q-item-section>
-        </q-item>
+
       </q-list>
 
       <q-space />
@@ -178,10 +167,7 @@ function handleLogout() {
   router.push('/auth/login');
 }
 
-function navigateToEmployeeDashboard() {
-  // Navigate to employee dashboard within the same project
-  router.push('/employee/dashboard');
-}
+
 </script>
 
 <style scoped>

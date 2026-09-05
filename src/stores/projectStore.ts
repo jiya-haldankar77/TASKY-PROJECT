@@ -60,24 +60,7 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
-    async fetchProjectDetails(id: string) {
-      this.loading = true;
-      try {
-        const response = await fetch(`http://localhost:3001/api/pm/projects/${id}/details`, {
-          headers: this.getHeaders(),
-        });
-        const data = await response.json();
-        if (data.success) {
-          this.currentProject = data.project;
-        } else {
-          this.error = data.error;
-        }
-      } catch (err: any) {
-        this.error = err.message;
-      } finally {
-        this.loading = false;
-      }
-    },
+
 
     async createProject(projectData: any) {
       try {
