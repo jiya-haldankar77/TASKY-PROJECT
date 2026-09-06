@@ -281,6 +281,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <ResourceDetailDialog
+      v-model="showResourceDialog"
+      :resource-id="selectedResourceId"
+    />
   </q-page>
 </template>
 
@@ -288,6 +293,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useOrgStore } from '../stores/orgStore';
+import ResourceDetailDialog from '../components/ResourceDetailDialog.vue';
 
 const orgStore = useOrgStore();
 const $q = useQuasar();
@@ -300,6 +306,8 @@ const inviteCodeGenerated = ref(false);
 const generatedInviteCode = ref('');
 const generatingInvite = ref(false);
 const memberSearch = ref('');
+const showResourceDialog = ref(false);
+const selectedResourceId = ref(0);
 
 const inviteLink = computed(() => {
   if (!generatedInviteCode.value) return '';
@@ -356,8 +364,8 @@ const deactivateInvite = async (id: string) => {
 };
 
 const viewMemberDetails = (member: any) => {
-  console.log('View member details:', member);
-  // Could open a dialog or navigate to a detailed view
+  selectedResourceId.value = Number(member.id);
+  showResourceDialog.value = true;
 };
 
 const generateInviteCode = async () => {

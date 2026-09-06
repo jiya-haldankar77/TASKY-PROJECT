@@ -1,9 +1,14 @@
 <template>
-  <div class="meter-container">
-    <div ref="meterChart" :style="{ width: width, height: height }"></div>
+  <div class="meter-wrapper">
+    <div class="meter-container">
+      <div ref="meterChart" :style="{ width: width, height: height }"></div>
+      <div class="meter-value" :style="{ color: labelColor }">
+        {{ animatedValue }}%
+      </div>
+    </div>
+
     <div class="meter-label">
-      <div class="label-text">{{ label }}</div>
-      <div class="label-value" :style="{ color: labelColor }">{{ animatedValue }}%</div>
+      {{ label }}
     </div>
   </div>
 </template>
@@ -143,24 +148,32 @@ watch(
 </script>
 
 <style scoped>
+.meter-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .meter-container {
   position: relative;
   display: inline-block;
 }
-.meter-label {
+
+.meter-value {
   position: absolute;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  text-align: center;
-}
-.label-text {
-  font-size: 11px;
-  color: #666;
-}
-.label-value {
   font-size: 24px;
   font-weight: bold;
   transition: color 0.3s ease;
+}
+
+.meter-label {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  text-align: center;
 }
 </style>

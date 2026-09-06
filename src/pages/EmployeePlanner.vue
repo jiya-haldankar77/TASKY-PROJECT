@@ -1771,7 +1771,7 @@ async function saveAllUpdates() {
   position: relative;
   min-height: 83px;
   padding: 8px 9px;
-  border: 1px solid var(--color-border-light);
+  border: 1px solid #cfd5df;
   border-radius: 7px;
   background: var(--color-surface);
   cursor: pointer;

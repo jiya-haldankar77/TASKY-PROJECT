@@ -21,6 +21,22 @@
         >
           <template v-slot:prepend><q-icon name="search" /></template>
         </q-input>
+        <q-avatar size="36px" class="cursor-pointer">
+            <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
+            <q-menu anchor="bottom right" self="top right">
+              <q-list style="min-width: 150px">
+                <q-item clickable v-close-popup to="/dashboard/profile">
+                  <q-item-section avatar><q-icon name="person" /></q-item-section>
+                  <q-item-section>Profile</q-item-section>
+                </q-item>
+                <q-separator />
+                <q-item clickable v-close-popup @click="logout">
+                  <q-item-section avatar><q-icon name="logout" color="red" /></q-item-section>
+                  <q-item-section class="text-red">Logout</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-avatar>
         
       </div>
     </div>
@@ -141,6 +157,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import ResourceDetailDialog from '../components/ResourceDetailDialog.vue';
+import { useAuthStore } from '../stores/authStore'
+
+const authStore = useAuthStore()
+
+const logout = () => {
+  authStore.logout()
+}
 
 const employees = ref<any[]>([]);
 const searchQuery = ref('');

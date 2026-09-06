@@ -95,9 +95,9 @@
           style="border-radius: 12px; font-weight: 500"
         >
           <q-item-section avatar>
-            <q-icon name="calendar_month" />
+            <q-icon name="timeline" />
           </q-item-section>
-          <q-item-section>Calendar</q-item-section>
+          <q-item-section>Timeline</q-item-section>
         </q-item>
 
 
@@ -134,6 +134,9 @@
             <q-icon name="o_notifications" />
           </q-item-section>
           <q-item-section>Notifications</q-item-section>
+          <q-item-section side>
+            <q-badge v-if="unreadNotifications" color="lime-13" text-color="black" :label="unreadNotifications" rounded />
+          </q-item-section>
         </q-item>
 
         <q-item clickable v-ripple @click="handleLogout" class="nav-item rounded-borders">
@@ -152,16 +155,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 const router = useRouter();
 const $q = useQuasar();
 const leftDrawerOpen = ref(true);
+const notificationStore = useNotificationStore();
+const unreadNotifications = computed(() => notificationStore.unreadCount);
 
 onMounted(() => {
   $q.dark.set(localStorage.getItem('tasky_dark_mode') === 'true');
+  void notificationStore.fetchNotifications();
 });
 
 function handleLogout() {

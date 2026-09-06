@@ -30,16 +30,6 @@
           <q-tooltip> View employee insights </q-tooltip>
         </q-btn>
 
-        <q-btn
-          flat
-          icon="refresh"
-          color="grey-7"
-          @click="refreshTasks"
-          label="Refresh Task"
-          class="q-px-md"
-        >
-          <q-tooltip> Refresh tasks </q-tooltip>
-        </q-btn>
       </div>
     </div>
 
@@ -742,9 +732,26 @@
 
         <q-separator />
 
+        <q-tabs
+          v-model="manageTab"
+          dense
+          class="bg-white text-grey-7 q-px-lg"
+          active-color="primary"
+          indicator-color="primary"
+          align="left"
+          narrow-indicator
+        >
+          <q-tab name="details" label="Details" />
+          <q-tab name="timeline" label="Progress Timeline" />
+          <q-tab name="impact" label="Simulate Impact" />
+        </q-tabs>
+
+        <q-separator />
+
         <!-- DRAWER CONTENT -->
 
-        <div class="col scroll q-pa-lg">
+        <q-tab-panels v-model="manageTab" animated class="col scroll bg-grey-1">
+          <q-tab-panel name="details" class="q-pa-lg">
           <!-- PROGRESS -->
 
           <div class="manage-progress-card q-pa-md">
@@ -895,7 +902,28 @@
               </div>
             </div>
           </div>
-        </div>
+          </q-tab-panel>
+
+          <q-tab-panel name="timeline" class="q-pa-lg">
+            <q-card flat bordered class="bg-white q-pa-md">
+              <div class="text-subtitle1 text-weight-bold q-mb-md">Progress Timeline</div>
+              <div class="text-body2 text-grey-7">Track updates and comments for this task here.</div>
+              <div class="q-mt-lg text-caption text-grey-6">Current status: {{ selectedTask?.status }}</div>
+              <div class="q-mt-sm text-caption text-grey-6">Last recorded progress: {{ selectedTask ? taskProgress(selectedTask) : 0 }}%</div>
+            </q-card>
+          </q-tab-panel>
+
+          <q-tab-panel name="impact" class="q-pa-lg">
+            <q-card flat bordered class="bg-white q-pa-md">
+              <div class="text-subtitle1 text-weight-bold q-mb-md">Simulate Impact</div>
+              <div class="text-body2 text-grey-7">Review the task's current progress, deadline and remaining work before making an update.</div>
+              <q-linear-progress :value="selectedTask ? taskProgress(selectedTask) / 100 : 0" color="primary" track-color="grey-3" rounded size="8px" class="q-mt-lg" />
+              <div class="row justify-between text-caption text-grey-6 q-mt-sm">
+                <span>Progress</span><span>{{ selectedTask ? taskProgress(selectedTask) : 0 }}%</span>
+              </div>
+            </q-card>
+          </q-tab-panel>
+        </q-tab-panels>
 
         <!-- SAVE -->
 
@@ -1133,6 +1161,7 @@ const userPoints = ref(0);
 const userRank = ref(0);
 
 const selectedTask = ref<Task | null>(null);
+const manageTab = ref('details');
 
 // ============================================================
 // FETCH TASKS FROM BACKEND
@@ -2148,6 +2177,7 @@ async function saveEditedSubtasks() {
 
 function openManage(task: Task) {
   selectedTask.value = task;
+  manageTab.value = 'details';
 
   showManageDrawer.value = true;
 }
@@ -2232,15 +2262,6 @@ function clearFilters() {
   statusFilter.value = 'All Statuses';
 }
 
-function refreshTasks() {
-  $q.notify({
-    message: 'Tasks refreshed',
-
-    color: 'primary',
-
-    icon: 'refresh',
-  });
-}
 
 // ============================================================
 // PRIORITY STYLE

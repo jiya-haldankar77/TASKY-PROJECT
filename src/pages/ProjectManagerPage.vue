@@ -257,9 +257,23 @@
                       }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
-                      <q-badge :color="user.access_level === 'manager' ? 'orange' : 'blue'">
-                        {{ user.access_level === 'manager' ? 'Manager' : 'Employee' }}
-                      </q-badge>
+                      <div class="column items-end q-gutter-xs" style="min-width: 120px">
+                        <q-badge :color="user.access_level === 'manager' ? 'orange' : 'blue'">
+                          {{ user.access_level === 'manager' ? 'Manager' : 'Employee' }}
+                        </q-badge>
+                        <div class="row items-center no-wrap full-width">
+                          <q-linear-progress
+                            :value="Math.min(Number(user.points || 0), 100) / 100"
+                            color="primary"
+                            track-color="grey-3"
+                            rounded
+                            size="6px"
+                            class="col"
+                          />
+                          <span class="text-caption text-grey-7 q-ml-xs">{{ Number(user.points || 0) }} pts</span>
+                        </div>
+                        <div class="text-caption text-grey-6">Performance points</div>
+                      </div>
                     </q-item-section>
                   </q-item>
                 </q-list>

@@ -72,39 +72,11 @@ defineOptions({
 const notifications = ref<any[]>([]);
 const notificationStore = useNotificationStore();
 
-onMounted(() => {
-  loadNotifications();
-});
+onMounted(loadNotifications);
 
-function loadNotifications() {
-  notificationStore.fetchNotifications().then(() => { notifications.value = notificationStore.notifications.map((n: any) => ({ ...n, read: Boolean(n.is_read) })); });
-  /* fallback keeps the page useful if the API is unavailable */
-  notifications.value = notifications.value.length ? notifications.value : [
-    {
-      id: 1,
-      type: 'task_assigned',
-      title: 'New Task Assigned',
-      message: 'You have been assigned to "Update User Interface"',
-      created_at: new Date().toISOString(),
-      read: false,
-    },
-    {
-      id: 2,
-      type: 'review_requested',
-      title: 'Review Requested',
-      message: 'John Doe requested a review for "API Integration"',
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      read: true,
-    },
-    {
-      id: 3,
-      type: 'review_completed',
-      title: 'Review Completed',
-      message: 'Your task "Database Migration" has been reviewed',
-      created_at: new Date(Date.now() - 172800000).toISOString(),
-      read: true,
-    },
-  ];
+async function loadNotifications() {
+  await notificationStore.fetchNotifications();
+  notifications.value = notificationStore.notifications.map((n: any) => ({ ...n, read: Boolean(n.is_read) }));
 }
 
 function getNotificationIcon(type: string) {

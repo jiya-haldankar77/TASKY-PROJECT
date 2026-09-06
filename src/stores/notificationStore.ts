@@ -20,16 +20,17 @@ export const useNotificationStore = defineStore('notification', {
 
     async fetchNotifications() {
       this.loading = true;
+      this.error = null;
       try {
         const response = await fetch('http://localhost:3001/api/pm/notifications', {
           headers: this.getHeaders(),
         });
         const data = await response.json();
-        if (data.success) {
-          this.notifications = data.notifications;
-        }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Failed to load notifications');
+        this.notifications = Array.isArray(data.notifications) ? data.notifications : [];
       } catch (err: any) {
         this.error = err.message;
+        this.notifications = [];
       } finally {
         this.loading = false;
       }
@@ -42,10 +43,9 @@ export const useNotificationStore = defineStore('notification', {
           headers: this.getHeaders(),
         });
         const data = await response.json();
-        if (data.success) {
-          const n = this.notifications.find((n) => n.id == id);
-          if (n) n.is_read = 1;
-        }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Failed to mark notification as read');
+        const n = this.notifications.find((n) => n.id == id);
+        if (n) n.is_read = 1;
       } catch (err: any) {
         console.error(err);
       }
@@ -58,9 +58,8 @@ export const useNotificationStore = defineStore('notification', {
           headers: this.getHeaders(),
         });
         const data = await response.json();
-        if (data.success) {
-          this.notifications.forEach((n) => (n.is_read = 1));
-        }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Failed to mark notifications as read');
+        this.notifications.forEach((n) => (n.is_read = 1));
       } catch (err: any) {
         console.error(err);
       }
@@ -73,10 +72,9 @@ export const useNotificationStore = defineStore('notification', {
           headers: this.getHeaders(),
         });
         const data = await response.json();
-        if (data.success) {
-          this.notifications = this.notifications.filter((n) => n.id != id);
-          return true;
-        }
+        if (!response.ok || !data.success) throw new Error(data.error || 'Failed to delete notification');
+        this.notifications = this.notifications.filter((n) => n.id != id);
+        return true;
       } catch (err: any) {
         console.error(err);
       }
