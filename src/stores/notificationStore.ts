@@ -65,5 +65,22 @@ export const useNotificationStore = defineStore('notification', {
         console.error(err);
       }
     },
+
+    async deleteNotification(id: string) {
+      try {
+        const response = await fetch(`http://localhost:3001/api/pm/notifications/${id}`, {
+          method: 'DELETE',
+          headers: this.getHeaders(),
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.notifications = this.notifications.filter((n) => n.id != id);
+          return true;
+        }
+      } catch (err: any) {
+        console.error(err);
+      }
+      return false;
+    },
   },
 });

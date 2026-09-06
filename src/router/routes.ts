@@ -64,7 +64,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'notifications',
-        component: () => import('@/pages/NotificationsPage.vue'),
+        component: () => import('@/pages/employee/Notifications.vue'),
         meta: { requiresRole: 'pm' },
       },
       {
@@ -96,7 +96,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'notifications',
-        component: () => import('@/pages/NotificationsPage.vue'),
+        component: () => import('@/pages/employee/Notifications.vue'),
         meta: { requiresRole: 'employee' },
       },
       {
@@ -122,6 +122,11 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'reviews',
         component: () => import('@/pages/EmployeeReviewsPage.vue'),
+        meta: { requiresRole: 'employee' },
+      },
+      {
+        path: 'settings',
+        component: () => import('@/pages/employee/Settings.vue'),
         meta: { requiresRole: 'employee' },
       },
     ],

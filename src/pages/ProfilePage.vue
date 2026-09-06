@@ -44,6 +44,16 @@
         no-caps
         @click="openEditDialog"
       />
+      <q-toggle
+        v-model="darkMode"
+        class="q-ml-md"
+        color="indigo"
+        checked-icon="dark_mode"
+        unchecked-icon="light_mode"
+        @update:model-value="setDarkMode"
+      >
+        <q-tooltip>Dark mode</q-tooltip>
+      </q-toggle>
     </div>
 
     <!-- Personal Metrics -->
@@ -196,8 +206,17 @@ import ProjectListCard from '../components/ProjectListCard.vue';
 const $q = useQuasar();
 const authStore = useAuthStore();
 const projectStore = useProjectStore();
+const darkMode = ref(false);
+
+const setDarkMode = (value: boolean) => {
+  darkMode.value = value;
+  $q.dark.set(value);
+  localStorage.setItem('tasky_dark_mode', String(value));
+};
 
 onMounted(() => {
+  darkMode.value = localStorage.getItem('tasky_dark_mode') === 'true';
+  $q.dark.set(darkMode.value);
   if (projectStore.projects.length === 0) {
     projectStore.fetchProjects();
   }

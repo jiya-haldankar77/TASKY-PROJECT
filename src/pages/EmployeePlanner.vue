@@ -1599,6 +1599,22 @@ async function saveAllUpdates() {
   background: var(--color-background);
 }
 
+.planner-header {
+  max-width: 1440px;
+  margin-inline: auto;
+}
+
+.planner-header-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
 .streak-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -2051,6 +2067,15 @@ async function saveAllUpdates() {
   .calendar-cell {
     min-height: 75px;
     padding: 7px;
+  }
+
+  .planner-header {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .planner-header .text-h5 {
+    font-size: 1.35rem;
   }
 
   .calendar-grid {

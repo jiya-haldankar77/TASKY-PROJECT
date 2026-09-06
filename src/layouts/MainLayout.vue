@@ -57,27 +57,17 @@
 
       <!-- Bottom Navigation -->
       <q-list class="q-gutter-y-sm" padding>
-        <q-item
-          clickable
-          v-ripple
-          class="nav-item rounded-borders"
-          style="border-radius: 12px; font-weight: 500"
-        >
+        <q-item clickable v-ripple to="/employee/notifications" active-class="bg-lime-13 text-black" class="nav-item rounded-borders" style="border-radius: 12px; font-weight: 500">
           <q-item-section avatar>
             <q-icon name="o_notifications" />
           </q-item-section>
           <q-item-section>Notifications</q-item-section>
           <q-item-section side>
-            <q-badge color="lime-13" text-color="black" label="1" rounded />
+            <q-badge v-if="unreadNotifications" color="lime-13" text-color="black" :label="unreadNotifications" rounded />
           </q-item-section>
         </q-item>
 
-        <q-item
-          clickable
-          v-ripple
-          class="nav-item rounded-borders"
-          style="border-radius: 12px; font-weight: 500"
-        >
+        <q-item clickable v-ripple to="/employee/settings" active-class="bg-lime-13 text-black" class="nav-item rounded-borders" style="border-radius: 12px; font-weight: 500">
           <q-item-section avatar>
             <q-icon name="o_settings" />
           </q-item-section>
@@ -99,6 +89,16 @@
       </q-list>
     </q-drawer>
 
+    <q-header class="employee-header bg-grey-1 text-dark" bordered>
+      <q-toolbar class="q-px-lg">
+        <div class="text-subtitle1 text-weight-bold">Employee Workspace</div><q-space />
+        <q-btn flat round dense icon="notifications_none" color="grey-8" to="/employee/notifications" class="q-mr-sm" />
+        <q-avatar size="38px" class="cursor-pointer"><img :src="authStore.user?.avatar || 'https://i.pravatar.cc/150?img=1'" />
+          <q-menu anchor="bottom right" self="top right"><q-list style="min-width: 190px"><q-item clickable v-close-popup to="/employee/settings"><q-item-section avatar><q-icon name="person" /></q-item-section><q-item-section><q-item-label>{{ authStore.user?.firstName || 'Employee' }} {{ authStore.user?.surname || '' }}</q-item-label><q-item-label caption>Profile & settings</q-item-label></q-item-section></q-item><q-separator /><q-item clickable v-close-popup @click="handleLogout"><q-item-section avatar><q-icon name="logout" color="red" /></q-item-section><q-item-section class="text-red">Logout</q-item-section></q-item></q-list></q-menu>
+        </q-avatar>
+      </q-toolbar>
+    </q-header>
+
     <q-page-container class="bg-grey-1">
       <router-view />
     </q-page-container>
@@ -106,16 +106,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 const router = useRouter();
 const $q = useQuasar();
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
+const unreadNotifications = computed(() => notificationStore.unreadCount);
 
 const leftDrawerOpen = ref(true);
+onMounted(() => {
+  $q.dark.set(localStorage.getItem('tasky_dark_mode') === 'true');
+  void notificationStore.fetchNotifications();
+});
 
 const navigationLinks = computed(() => {
   return [
@@ -170,6 +177,7 @@ function handleLogout() {
 </script>
 
 <style scoped>
+.employee-header { box-shadow: 0 1px 8px rgba(32, 54, 83, .08); }
 .nav-item {
   color: #bdbdbd;
 }

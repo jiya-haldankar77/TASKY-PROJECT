@@ -150,11 +150,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const $q = useQuasar();
 const leftDrawerOpen = ref(true);
+
+onMounted(() => {
+  $q.dark.set(localStorage.getItem('tasky_dark_mode') === 'true');
+});
 
 function handleLogout() {
   // Clear authentication data from localStorage

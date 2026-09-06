@@ -20,6 +20,6 @@ defineProps<Props>();
 .streak-card {
   background: linear-gradient(135deg, #ff9a56 0%, #ff6b6b 100%);
   border-radius: 20px;
-  color: white;
+  color: black;
 }
 </style>

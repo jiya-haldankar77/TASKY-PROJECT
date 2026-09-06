@@ -9,20 +9,56 @@
           <div class="text-grey-7 text-caption">Monitor team capacity and workload</div>
         </div>
       </div>
-      <div class="row q-gutter-sm">
-  <q-input
-    v-model="searchQuery"
-    outlined
-    dense
-    placeholder="Search resources..."
-    bg-color="white"
-    style="width: 250px"
-  >
-    <template v-slot:prepend>
-      <q-icon name="search" />
-    </template>
-  </q-input>
-</div>
+      <div class="row items-center q-gutter-sm">
+        <q-input
+          v-model="searchQuery"
+          outlined
+          dense
+          rounded
+          placeholder="Search resources..."
+          bg-color="white"
+          style="width: 250px"
+        >
+          <template v-slot:prepend><q-icon name="search" /></template>
+        </q-input>
+        <q-select
+          v-model="roleFilter"
+          outlined
+          dense
+          rounded
+          emit-value
+          map-options
+          :options="roleOptions"
+          bg-color="white"
+          style="width: 150px"
+        >
+          <template v-slot:prepend><q-icon name="o_badge" size="18px" /></template>
+        </q-select>
+        <q-select
+          v-model="statusFilter"
+          outlined
+          dense
+          rounded
+          emit-value
+          map-options
+          :options="statusOptions"
+          bg-color="white"
+          style="width: 150px"
+        >
+          <template v-slot:prepend><q-icon name="o_filter_alt" size="18px" /></template>
+        </q-select>
+        <q-btn
+          v-if="hasActiveFilters"
+          flat
+          round
+          dense
+          icon="clear"
+          color="grey-7"
+          @click="clearFilters"
+        >
+          <q-tooltip>Clear filters</q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <!-- Error State -->
@@ -102,6 +138,8 @@ import ResourceDetailDialog from '../components/ResourceDetailDialog.vue';
 
 const employees = ref<any[]>([]);
 const searchQuery = ref('');
+const roleFilter = ref('all');
+const statusFilter = ref('all');
 const loading = ref(false);
 const error = ref<string | null>(null);
 const showResourceDialog = ref(false);
@@ -116,10 +154,26 @@ const columns = [
   { name: 'status', label: 'Status', field: 'workload_status', align: 'center' as const, sortable: true },
 ];
 
+const statusOptions = [
+  { label: 'All Statuses', value: 'all' },
+  { label: 'Available', value: 'available' },
+  { label: 'Near Capacity', value: 'near-capacity' },
+  { label: 'Overloaded', value: 'overloaded' },
+];
+
+const roleOptions = computed(() => [
+  { label: 'All Roles', value: 'all' },
+  ...Array.from(new Set(employees.value.map((employee) => employee.role_name).filter(Boolean))).map(
+    (role) => ({ label: role, value: role }),
+  ),
+]);
+
+const hasActiveFilters = computed(
+  () => Boolean(searchQuery.value.trim()) || roleFilter.value !== 'all' || statusFilter.value !== 'all',
+);
+
 const filteredEmployees = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
-
-  if (!query) return employees.value;
 
   return employees.value.filter((employee) => {
     const name = `${employee.first_name} ${employee.last_name}`.toLowerCase();
@@ -127,14 +181,24 @@ const filteredEmployees = computed(() => {
     const role = (employee.role_name || '').toLowerCase();
     const status = (employee.workload_status || '').toLowerCase();
 
-    return (
+    const matchesSearch = !query || (
       name.includes(query) ||
       code.includes(query) ||
       role.includes(query) ||
       status.includes(query)
     );
+    const matchesRole = roleFilter.value === 'all' || employee.role_name === roleFilter.value;
+    const matchesStatus = statusFilter.value === 'all' || employee.workload_status === statusFilter.value;
+
+    return matchesSearch && matchesRole && matchesStatus;
   });
 });
+
+const clearFilters = () => {
+  searchQuery.value = '';
+  roleFilter.value = 'all';
+  statusFilter.value = 'all';
+};
 
 const fetchEmployees = async () => {
   loading.value = true;

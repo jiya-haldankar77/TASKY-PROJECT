@@ -963,24 +963,18 @@ function buildGanttDataset() {
 
       let earliestStart: Date | null = null;
       let latestEnd: Date | null = null;
-      let totalWeightedProgress = 0;
-      let totalDuration = 0;
+      let taskProgressTotal = 0;
 
       const childTaskDataItems: Array<Record<string, unknown>> = [];
 
       projectTasks.forEach((t) => {
         const { segments, earliestStart: tStart, latestEnd: tEnd } = getTaskWorkSegments(t);
-        const dur = Math.max(
-          1,
-          Math.round((tEnd.getTime() - tStart.getTime()) / (1000 * 60 * 60 * 24)),
-        );
         const prog = Number(t.progress) || 0;
 
         if (!earliestStart || tStart < earliestStart) earliestStart = tStart;
         if (!latestEnd || tEnd > latestEnd) latestEnd = tEnd;
 
-        totalWeightedProgress += prog * dur;
-        totalDuration += dur;
+        taskProgressTotal += prog;
 
         const firstAssigneeId = t.assigned_resource_ids?.[0];
         const resourceObj = firstAssigneeId ? resourceMap.value.get(firstAssigneeId) : undefined;
@@ -1009,13 +1003,12 @@ function buildGanttDataset() {
       const startObj = earliestStart || new Date();
       const endObj = latestEnd || addDays(startObj, 1);
 
-      const calculatedProgress =
-        totalDuration > 0
-          ? totalWeightedProgress / totalDuration / 100
-          : projectTasks.length > 0
-            ? projectTasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0) /
-              (projectTasks.length * 100)
-            : 0;
+      const projectProgress = Number(p.progress);
+      const calculatedProgress = Number.isFinite(projectProgress)
+        ? projectProgress / 100
+        : projectTasks.length > 0
+          ? taskProgressTotal / (projectTasks.length * 100)
+          : 0;
 
       const projNodeId = `proj_${p.project_id}`;
       const isProjectOpen =

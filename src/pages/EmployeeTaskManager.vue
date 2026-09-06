@@ -479,7 +479,7 @@
 
           <!-- PRIORITY / DEADLINE -->
 
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-md" style="gap: 10px">
             <div class="col-6">
               <q-select
                 v-model="newTask.priority"
@@ -489,7 +489,7 @@
               />
             </div>
 
-            <div class="col-6">
+            <div class="col-5">
               <q-input v-model="newTask.deadline" outlined type="date" label="Deadline" />
             </div>
           </div>

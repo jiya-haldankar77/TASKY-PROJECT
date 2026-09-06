@@ -1,7 +1,7 @@
 <template>
-  <q-card flat class="quick-add-card q-pa-lg q-mb-lg">
+  <q-card flat bordered class="quick-add-card q-pa-lg q-mb-lg">
     <div class="row items-center">
-      <q-avatar size="48px" class="quick-add-icon">
+        <q-avatar size="48px" class="quick-add-icon">
         <q-icon name="add_task" size="25px" />
       </q-avatar>
       <div class="q-ml-md">
@@ -12,8 +12,8 @@
       <q-btn
         unelevated
         no-caps
-        color="secondary"
-        text-color="primary"
+        color="primary"
+        text-color="white"
         icon="add"
         label="Create Task"
         class="q-px-lg"
@@ -30,23 +30,25 @@ defineEmits(['create']);
 <style scoped>
 .quick-add-card {
   border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #fff;
+  color: #263238;
+  border-color: #e5eaf0;
+  box-shadow: 0 7px 20px rgba(32, 54, 83, 0.05);
 }
 
 .quick-add-icon {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: #e8eaf6;
+  color: #3949ab;
 }
 
 .quick-add-title {
   font-size: 18px;
   font-weight: 600;
-  color: white;
+  color: #263238;
 }
 
 .quick-add-subtitle {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #738198;
 }
 </style>

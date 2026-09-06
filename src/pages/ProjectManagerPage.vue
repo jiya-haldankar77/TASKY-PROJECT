@@ -70,7 +70,7 @@
                     <q-icon name="warning" size="24px" class="q-mr-sm" />
                     <div class="text-h6 text-weight-bold">Needs Attention</div>
                   </div>
-                  <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
+                  <div class="row items-center q-gutter-sm"><q-input v-model="searchQuery" outlined dense bg-color="white" placeholder="Search attention..." class="attention-search"><template v-slot:prepend><q-icon name="search" /></template></q-input><q-spinner-dots v-if="dashboardStore.loading" size="24px" /></div>
                 </div>
                 <div class="text-caption">Critical items that require immediate PM action</div>
               </q-card-section>
@@ -89,12 +89,6 @@
                 <q-tab name="employee" :label="`Employees (${dashboardStore.stats?.overloadedResources ?? 0})`" />
                 <q-tab name="task" :label="`Tasks (${dashboardStore.stats?.overdueTasks ?? 0})`" />
               </q-tabs>
-              <q-card-section class="q-pb-sm q-pt-sm bg-red-1">
-                <q-input v-model="searchQuery" outlined dense bg-color="white" placeholder="Search attention items..." class="attention-search">
-                  <template v-slot:prepend><q-icon name="search" /></template>
-                </q-input>
-              </q-card-section>
-
               <q-card-section
                 class="q-pt-none q-px-md q-pb-md"
                 style="flex: 1 1 0; overflow-y: auto"
@@ -226,14 +220,9 @@
                       {{ dashboardStore.stats?.pendingReviews ?? 0 }} Reviews Pending
                     </q-badge>
                   </div>
-                  <q-spinner-dots v-if="dashboardStore.loading" size="24px" />
+                  <div class="row items-center q-gutter-sm"><q-input v-model="teamSearchQuery" outlined dense bg-color="white" placeholder="Search team..." class="team-search"><template v-slot:prepend><q-icon name="search" /></template></q-input><q-spinner-dots v-if="dashboardStore.loading" size="24px" /></div>
                 </div>
                 <div class="text-caption">All users in your organization</div>
-              </q-card-section>
-              <q-card-section class="q-pb-sm q-pt-sm bg-green-1">
-                <q-input v-model="teamSearchQuery" outlined dense bg-color="white" placeholder="Search team members..." class="team-search">
-                  <template v-slot:prepend><q-icon name="search" /></template>
-                </q-input>
               </q-card-section>
 
               <q-card-section

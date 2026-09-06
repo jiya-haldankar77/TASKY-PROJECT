@@ -1,16 +1,17 @@
 <template>
-  <q-page class="q-pa-md text-black">
+  <q-page class="q-pa-lg text-black" style="background:#f8f9fa">
     <!-- Header -->
     <div class="row items-center justify-between q-mb-md">
-      <div class="column">
-        <div class="text-h5 text-weight-bold">Notifications</div>
+      <div class="row items-center">
+        <q-avatar color="indigo-1" text-color="indigo" icon="notifications" size="48px" class="q-mr-md" style="border-radius:12px" />
+        <div class="column"><div class="text-h5 text-weight-bold">Notifications Center</div>
         <div class="text-grey-7 text-caption">Stay updated with your tasks and reviews</div>
-      </div>
+      </div></div>
       <q-btn color="primary" label="Mark All Read" @click="markAllRead" />
     </div>
 
     <!-- Notifications List -->
-    <q-card>
+    <q-card flat bordered class="notification-card">
       <q-card-section>
         <div class="text-h6 text-weight-bold">
           Recent Notifications ({{ notifications.length }})
@@ -39,16 +40,14 @@
               }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-btn
-                v-if="!notification.read"
-                flat
-                round
-                dense
-                icon="check"
-                color="green"
-                size="sm"
-                @click="markAsRead(notification.id)"
-              />
+              <div class="row items-center no-wrap">
+                <q-btn v-if="!notification.read" flat round dense icon="check" color="green" size="sm" @click="markAsRead(notification.id)">
+                  <q-tooltip>Mark as read</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense icon="delete_outline" color="negative" size="sm" @click="deleteNotification(notification.id)">
+                  <q-tooltip>Delete notification</q-tooltip>
+                </q-btn>
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -64,20 +63,23 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useNotificationStore } from '../../stores/notificationStore';
 
 defineOptions({
   name: 'EmployeeNotifications',
 });
 
 const notifications = ref<any[]>([]);
+const notificationStore = useNotificationStore();
 
 onMounted(() => {
   loadNotifications();
 });
 
 function loadNotifications() {
-  // Mock notifications - in production, this would come from database
-  notifications.value = [
+  notificationStore.fetchNotifications().then(() => { notifications.value = notificationStore.notifications.map((n: any) => ({ ...n, read: Boolean(n.is_read) })); });
+  /* fallback keeps the page useful if the API is unavailable */
+  notifications.value = notifications.value.length ? notifications.value : [
     {
       id: 1,
       type: 'task_assigned',
@@ -142,10 +144,25 @@ function markAsRead(id: number) {
   const notification = notifications.value.find((n: any) => n.id === id);
   if (notification) {
     notification.read = true;
+    void notificationStore.markAsRead(String(id));
   }
 }
 
 function markAllRead() {
   notifications.value.forEach((n: any) => (n.read = true));
+  void notificationStore.markAllAsRead();
+}
+
+async function deleteNotification(id: number) {
+  const index = notifications.value.findIndex((notification: any) => notification.id === id);
+  if (index === -1) return;
+  const [removed] = notifications.value.splice(index, 1);
+  if (!(await notificationStore.deleteNotification(String(id)))) {
+    notifications.value.splice(index, 0, removed);
+  }
 }
 </script>
+
+<style scoped>
+.notification-card { border-radius: 14px; border-color: #e5eaf0; box-shadow: 0 7px 20px rgba(32, 54, 83, .05); }
+</style>
