@@ -378,6 +378,9 @@
                       >
                         {{ formatDate(task.deadline) }}
                       </div>
+                      <div v-if="task.urgency_score" class="text-caption text-orange text-weight-bold q-mt-xs">
+                        Urgency: {{ task.urgency_score }}
+                      </div>
                     </div>
                     <div class="col-2 column items-end justify-center">
                       <q-badge

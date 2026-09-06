@@ -95,10 +95,12 @@
           style="border-radius: 12px; font-weight: 500"
         >
           <q-item-section avatar>
-            <q-icon name="timeline" />
+            <q-icon name="calendar_month" />
           </q-item-section>
-          <q-item-section>Timeline</q-item-section>
+          <q-item-section>Calendar</q-item-section>
         </q-item>
+
+
 
         <q-item
           clickable
@@ -164,10 +166,10 @@ onMounted(() => {
 
 function handleLogout() {
   // Clear authentication data from localStorage
-  localStorage.removeItem('tasky_user');
-  localStorage.removeItem('tasky_token');
-  localStorage.removeItem('pm_auth_token');
-  localStorage.removeItem('pm_user_data');
+  sessionStorage.removeItem('tasky_user');
+  sessionStorage.removeItem('tasky_token');
+  sessionStorage.removeItem('pm_auth_token');
+  sessionStorage.removeItem('pm_user_data');
 
   // Redirect to login page in same project
   router.push('/auth/login');

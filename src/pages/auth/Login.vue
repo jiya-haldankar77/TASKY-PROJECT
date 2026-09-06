@@ -290,8 +290,8 @@ const handleLogin = async () => {
       authStore.user = result.user;
       authStore.token = result.token;
       authStore.isAuthenticated = true;
-      localStorage.setItem('tasky_user', JSON.stringify(result.user));
-      localStorage.setItem('tasky_token', result.token);
+      sessionStorage.setItem('tasky_user', JSON.stringify(result.user));
+      sessionStorage.setItem('tasky_token', result.token);
 
       // Route based on role from database - all in same project
       if (result.user.role === 'pm') {

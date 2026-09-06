@@ -479,10 +479,12 @@
 
             <q-select
               v-model="newTask.project"
-              :options="projectOptions.slice(1)"
+              :options="createProjectOptions"
               label="Project *"
               outlined
               dense
+              emit-value
+              map-options
               :rules="[(val) => !!val || 'Project is required']"
             />
 
@@ -532,6 +534,20 @@
               </div>
             </div>
 
+            <!-- DEPENDENCIES -->
+            <q-select
+              v-model="newTask.depends_on_ids"
+              :options="taskOptions"
+              label="Dependencies (Optional)"
+              outlined
+              dense
+              multiple
+              use-chips
+              emit-value
+              map-options
+              hint="Tasks that must be completed first"
+            />
+
             <!-- SUBTASKS -->
 
             <div class="subtask-editor">
@@ -565,7 +581,7 @@
               <div
                 v-for="(subtask, index) in newTask.subtasks"
                 :key="subtask.id"
-                class="subtask-row"
+                class="subtask-row q-mt-sm row"
               >
                 <q-input
                   v-model="subtask.title"
@@ -573,6 +589,16 @@
                   dense
                   :placeholder="`Subtask ${index + 1}`"
                   class="col"
+                />
+
+                <q-input
+                  v-model.number="subtask.estimated_hours"
+                  type="number"
+                  outlined
+                  dense
+                  placeholder="Hours"
+                  style="width: 80px"
+                  class="q-ml-sm"
                 />
 
                 <q-btn
@@ -629,8 +655,18 @@
         <q-separator />
 
         <q-card-section>
-          <div v-for="subtask in editSubtasks" :key="subtask.id" class="edit-subtask-row">
+          <div v-for="subtask in editSubtasks" :key="subtask.id" class="edit-subtask-row row q-mt-sm">
             <q-input v-model="subtask.title" outlined dense class="col" />
+
+            <q-input
+              v-model.number="subtask.estimated_hours"
+              type="number"
+              outlined
+              dense
+              placeholder="Hours"
+              style="width: 80px"
+              class="q-ml-sm"
+            />
 
             <q-btn
               flat
@@ -778,6 +814,9 @@
                   }"
                 >
                   {{ subtask.title }}
+                  <span v-if="subtask.estimated_hours" class="text-caption text-grey-6 q-ml-sm">
+                    ({{ subtask.estimated_hours }} hr)
+                  </span>
                 </div>
 
                 <q-select
@@ -883,6 +922,19 @@
             size="md"
             @click="openReviewDialog"
           />
+
+          <q-btn
+            v-if="selectedTask.status === 'in-progress'"
+            unelevated
+            outline
+            no-caps
+            color="negative"
+            icon="warning"
+            label="Interrupt Task"
+            class="full-width q-mt-md"
+            size="md"
+            @click="showInterruptDialog = true"
+          />
         </div>
       </div>
     </q-drawer>
@@ -926,6 +978,28 @@
             label="Submit for Review"
             @click="submitForReview"
           />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showInterruptDialog">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold text-negative">Interrupt Task</div>
+          <div class="text-body2 text-grey-6 q-mt-xs">
+            {{ selectedTask?.name }}
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <div class="text-caption q-mb-md">
+            Interrupting a task indicates a blocker, bug, or priority shift. Your PM will be notified and this task will be rescheduled.
+          </div>
+          <q-input v-model="interruptReason" type="textarea" outlined label="Reason for interruption *" />
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" @click="showInterruptDialog = false" />
+          <q-btn unelevated no-caps color="negative" label="Submit Interrupt" @click="submitInterrupt" :disable="!interruptReason" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -983,6 +1057,7 @@ import TaskFilters from '@/components/TaskFilters.vue';
 // ============================================================
 
 const $q = useQuasar();
+const authStore = useAuthStore();
 
 // ============================================================
 // TYPES
@@ -1000,6 +1075,8 @@ interface Subtask {
   completed: boolean;
 
   status: SubtaskStatus;
+
+  estimated_hours?: number;
 }
 
 interface Task {
@@ -1069,7 +1146,6 @@ const submitComment = async () => {
   if (!selectedTask.value || !newComment.value.trim()) return;
 
   try {
-    const authStore = useAuthStore();
     const response = await fetch(`http://localhost:3001/api/employee/tasks/${selectedTask.value.id}/comment`, {
       method: 'POST',
       headers: {
@@ -1214,6 +1290,7 @@ const fetchTasks = async () => {
                   title: st.title,
                   completed: st.completed === 1,
                   status: st.status,
+                  estimated_hours: st.estimated_hours || 0,
                 }))
               : [];
 
@@ -1225,7 +1302,7 @@ const fetchTasks = async () => {
               priority: task.priority || 'medium',
               status: task.status || 'not-started',
               deadline: task.deadline || '',
-              assignedBy: 'Assigned by PM',
+              assignedBy: task.is_self_assigned ? 'Self-Assigned' : 'Assigned by PM',
               todayNote: '',
               createdAt: task.created_at || '',
               subtasks: subtasks,
@@ -1241,7 +1318,7 @@ const fetchTasks = async () => {
               priority: task.priority || 'medium',
               status: task.status || 'not-started',
               deadline: task.deadline || '',
-              assignedBy: 'Assigned by PM',
+              assignedBy: task.is_self_assigned ? 'Self-Assigned' : 'Assigned by PM',
               todayNote: '',
               createdAt: task.created_at || '',
               subtasks: [],
@@ -1263,10 +1340,32 @@ const fetchTasks = async () => {
 
 // Fetch tasks on component mount
 onMounted(() => {
+  fetchProjects();
   fetchTasks();
   fetchColleagues();
   fetchUserPointsAndRank();
 });
+
+const projects = ref<any[]>([]);
+
+const fetchProjects = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/pm/projects');
+    const result = await response.json();
+    if (result.success && result.projects) {
+      projects.value = result.projects;
+    }
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+  }
+};
+
+const createProjectOptions = computed(() => 
+  projects.value.map((p: any) => ({
+    label: p.name,
+    value: p.id,
+  }))
+);
 
 // Watch for tab changes and reset status filter when switching to completed tab
 watch(activeTab, (newTab) => {
@@ -1379,9 +1478,21 @@ const updateTaskProgress = async (taskId: number, progress: number, status: stri
       await fetchTasks();
     } else {
       console.error('Update task failed:', result.error);
+      $q.notify({
+        message: result.error || 'Update task failed',
+        color: 'negative',
+        icon: 'error',
+      });
+      // Revert the local changes by refreshing tasks
+      await fetchTasks();
     }
   } catch (error) {
     console.error('Error updating task progress:', error);
+    $q.notify({
+      message: 'Server error updating progress',
+      color: 'negative',
+      icon: 'error',
+    });
   }
 };
 
@@ -1394,16 +1505,19 @@ const newTask = ref({
 
   description: '',
 
-  project: '',
+  project: null as number | null,
 
   priority: 'Medium',
 
   deadline: '',
 
-  subtasks: [] as {
-    id: number;
-    title: string;
-  }[],
+  subtasks: [] as { id?: number; title: string; estimated_hours: number }[],
+
+  depends_on_ids: [] as number[],
+});
+
+const taskOptions = computed(() => {
+  return tasks.value.map(t => ({ label: t.name, value: t.id }));
 });
 
 // ============================================================
@@ -1495,7 +1609,7 @@ const filteredTasks = computed(() => {
     }
 
     if (activeTab.value === 'my') {
-      matchesTab = task.assignedBy === 'Assigned by PM';
+      matchesTab = task.assignedBy === 'Assigned by PM' || task.assignedBy === 'Self-Assigned';
     }
 
     return matchesSearch && matchesProject && matchesPriority && matchesStatus && matchesTab;
@@ -1761,7 +1875,7 @@ async function updateSubtaskStatus(task: Task, subtask: Subtask) {
 
   // Save subtask to database
   try {
-    await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
+    const response = await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1770,8 +1884,26 @@ async function updateSubtaskStatus(task: Task, subtask: Subtask) {
         completed: subtask.completed,
       }),
     });
+    const result = await response.json();
+    if (!result.success) {
+      console.error('Error updating subtask:', result.error);
+      $q.notify({
+        message: result.error || 'Update subtask failed',
+        color: 'negative',
+        icon: 'error',
+      });
+      // Revert the local changes
+      await fetchTasks();
+      return;
+    }
   } catch (error) {
     console.error('Error updating subtask:', error);
+    $q.notify({
+      message: 'Server error updating subtask',
+      color: 'negative',
+      icon: 'error',
+    });
+    return;
   }
 
   recalculateTask(task);
@@ -1817,13 +1949,15 @@ function openAddTask() {
 
     description: '',
 
-    project: '',
+    project: null,
 
     priority: 'Medium',
 
     deadline: '',
 
     subtasks: [],
+    
+    depends_on_ids: [],
   };
 
   showAddDialog.value = true;
@@ -1832,8 +1966,8 @@ function openAddTask() {
 function addNewTaskSubtask() {
   newTask.value.subtasks.push({
     id: Date.now(),
-
     title: '',
+    estimated_hours: 0,
   });
 }
 
@@ -1841,59 +1975,84 @@ function removeNewTaskSubtask(index: number) {
   newTask.value.subtasks.splice(index, 1);
 }
 
-function createTask() {
+async function createTask() {
   if (!newTask.value.name.trim()) {
     $q.notify({
       message: 'Please enter a task name',
-
       color: 'negative',
-
       icon: 'error',
     });
-
     return;
   }
 
-  const subtasks: Subtask[] = newTask.value.subtasks
+  if (!newTask.value.project) {
+    $q.notify({
+      message: 'Please select a project',
+      color: 'negative',
+      icon: 'error',
+    });
+    return;
+  }
 
-    .filter((subtask) => subtask.title.trim())
+  try {
+    const payload = {
+      title: newTask.value.name.trim(),
+      description: newTask.value.description || 'No description added.',
+      project_id: newTask.value.project,
+      priority: newTask.value.priority.toLowerCase(),
+      deadline: newTask.value.deadline || new Date().toISOString().split('T')[0],
+      assignee_ids: authStore.user ? [authStore.user.id] : [],
+      depends_on_ids: newTask.value.depends_on_ids,
+    };
 
-    .map((subtask) => ({
-      id: subtask.id,
+    const response = await fetch('http://localhost:3001/api/pm/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-      title: subtask.title.trim(),
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
 
-      completed: false,
+    const taskId = result.task.id;
 
-      status: 'not-started',
-    }));
+    // Create subtasks
+    const subtasks = newTask.value.subtasks
+      .filter((subtask) => subtask.title.trim());
+      
+    for (const subtask of subtasks) {
+      await fetch(`http://localhost:3001/api/employee/tasks/${taskId}/subtasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+        body: JSON.stringify({ 
+          title: subtask.title.trim(),
+          estimated_hours: subtask.estimated_hours || 0
+        }),
+      });
+    }
 
-  const task = {
-    id: Date.now(),
-    name: newTask.value.name.trim(),
-    description: newTask.value.description || 'No description added.',
-    project: newTask.value.project || 'Personal',
-    priority: newTask.value.priority || 'medium',
-    status: 'not-started',
-    deadline: newTask.value.deadline || new Date().toISOString().split('T')[0] || '',
-    assignedBy: 'Created by you',
-    subtasks,
-    todayNote: '',
-    createdAt: new Date().toISOString(),
-    progress: 0,
-  } as Task;
+    await fetchTasks();
 
-  tasks.value.unshift(task);
-
-  showAddDialog.value = false;
-
-  $q.notify({
-    message: 'Task created successfully',
-
-    color: 'positive',
-
-    icon: 'check_circle',
-  });
+    showAddDialog.value = false;
+    $q.notify({
+      message: 'Task created successfully',
+      color: 'positive',
+      icon: 'check_circle',
+    });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    $q.notify({
+      message: 'Error creating task',
+      color: 'negative',
+      icon: 'error',
+    });
+  }
 }
 
 // ============================================================
@@ -1919,6 +2078,8 @@ function addEditSubtask() {
     completed: false,
 
     status: 'not-started',
+    
+    estimated_hours: 0,
   });
 }
 
@@ -1951,7 +2112,10 @@ async function saveEditedSubtasks() {
       await fetch(`http://localhost:3001/api/employee/tasks/${selectedTask.value.id}/subtasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: subtask.title }),
+        body: JSON.stringify({ 
+          title: subtask.title,
+          estimated_hours: subtask.estimated_hours || 0
+        }),
       });
     }
 
@@ -2214,6 +2378,38 @@ function isOverdue(task: Task) {
   }
 
   return new Date(task.deadline) < new Date();
+}
+const showInterruptDialog = ref(false);
+const interruptReason = ref('');
+
+async function submitInterrupt() {
+  if (!selectedTask.value || !interruptReason.value) return;
+  try {
+    const response = await fetch(
+      `http://localhost:3001/api/pm/tasks/${selectedTask.value.id}/interrupt`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+        body: JSON.stringify({ reason: interruptReason.value }),
+      },
+    );
+
+    const data = await response.json();
+    if (data.success) {
+      $q.notify({ color: 'positive', message: 'Task interrupted successfully. PM notified.' });
+      showInterruptDialog.value = false;
+      showManageDrawer.value = false;
+      interruptReason.value = '';
+    } else {
+      $q.notify({ color: 'negative', message: data.error || 'Failed to interrupt task' });
+    }
+  } catch (error) {
+    console.error('Interrupt task error:', error);
+    $q.notify({ color: 'negative', message: 'Server error' });
+  }
 }
 </script>
 

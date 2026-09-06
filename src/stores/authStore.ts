@@ -24,10 +24,10 @@ export const useAuthStore = defineStore('auth', () => {
   // Mock invite codes
   const validInviteCodes = ['TASKY2024', 'WELCOME2024', 'TEAM2024', 'JOIN2024'];
 
-  // Initialize from localStorage
+  // Initialize from sessionStorage
   const initializeAuth = () => {
-    const savedUser = localStorage.getItem('tasky_user');
-    const savedToken = localStorage.getItem('tasky_token');
+    const savedUser = sessionStorage.getItem('tasky_user');
+    const savedToken = sessionStorage.getItem('tasky_token');
 
     console.log('AuthStore initializeAuth:');
     console.log('- savedUser exists:', !!savedUser);
@@ -42,8 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
         console.log('- User:', user.value?.email);
       } catch (e) {
         console.error('- Failed to parse saved user:', e);
-        localStorage.removeItem('tasky_user');
-        localStorage.removeItem('tasky_token');
+        sessionStorage.removeItem('tasky_user');
+        sessionStorage.removeItem('tasky_token');
       }
     } else {
       console.log('- No saved auth found');
@@ -67,8 +67,8 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = data.token;
         isAuthenticated.value = true;
 
-        localStorage.setItem('tasky_user', JSON.stringify(data.user));
-        localStorage.setItem('tasky_token', token.value || '');
+        sessionStorage.setItem('tasky_user', JSON.stringify(data.user));
+        sessionStorage.setItem('tasky_token', token.value || '');
 
         return { success: true, user: data.user };
       }
@@ -104,8 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = data.token;
         isAuthenticated.value = true;
 
-        localStorage.setItem('tasky_user', JSON.stringify(data.user));
-        localStorage.setItem('tasky_token', token.value || '');
+        sessionStorage.setItem('tasky_user', JSON.stringify(data.user));
+        sessionStorage.setItem('tasky_token', token.value || '');
         return { success: true, user: data.user };
       }
 
@@ -140,8 +140,8 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = data.token;
         isAuthenticated.value = true;
 
-        localStorage.setItem('tasky_user', JSON.stringify(data.user));
-        localStorage.setItem('tasky_token', token.value || '');
+        sessionStorage.setItem('tasky_user', JSON.stringify(data.user));
+        sessionStorage.setItem('tasky_token', token.value || '');
         return { success: true, user: data.user };
       }
 
@@ -203,8 +203,8 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null;
     isAuthenticated.value = false;
 
-    localStorage.removeItem('tasky_user');
-    localStorage.removeItem('tasky_token');
+    sessionStorage.removeItem('tasky_user');
+    sessionStorage.removeItem('tasky_token');
   };
 
   const updateProfile = async (
@@ -230,7 +230,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (data.success) {
         user.value = { ...user.value, ...data.user };
-        localStorage.setItem('tasky_user', JSON.stringify(user.value));
+        sessionStorage.setItem('tasky_user', JSON.stringify(user.value));
         return { success: true, user: data.user };
       }
 
@@ -265,3 +265,4 @@ export const useAuthStore = defineStore('auth', () => {
     validateInviteCode,
   };
 });
+

@@ -156,10 +156,10 @@ const navigationLinks = computed(() => {
 
 function handleLogout() {
   // Clear authentication data from localStorage
-  localStorage.removeItem('tasky_user');
-  localStorage.removeItem('tasky_token');
-  localStorage.removeItem('pm_auth_token');
-  localStorage.removeItem('pm_user_data');
+  sessionStorage.removeItem('tasky_user');
+  sessionStorage.removeItem('tasky_token');
+  sessionStorage.removeItem('pm_auth_token');
+  sessionStorage.removeItem('pm_user_data');
 
   // Clear authStore
   authStore.logout();

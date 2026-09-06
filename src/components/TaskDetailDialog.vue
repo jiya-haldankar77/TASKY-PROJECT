@@ -135,6 +135,25 @@
 
                     <q-item class="q-py-md">
                       <q-item-section>
+                        <q-item-label caption>Scheduled Window</q-item-label>
+                        <q-item-label class="text-weight-medium">
+                          <template v-if="taskStore.currentTask.scheduled_start && taskStore.currentTask.scheduled_end">
+                            {{ formatDate(taskStore.currentTask.scheduled_start) }} ➡ {{ formatDate(taskStore.currentTask.scheduled_end) }}
+                          </template>
+                          <span v-else class="text-grey-6">Unscheduled</span>
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+
+                    <q-item class="q-py-md" v-if="taskStore.currentTask.urgency_score">
+                      <q-item-section>
+                        <q-item-label caption>Urgency Score</q-item-label>
+                        <q-item-label class="text-weight-medium">{{ taskStore.currentTask.urgency_score }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+
+                    <q-item class="q-py-md">
+                      <q-item-section>
                         <q-item-label caption>Expected Effort</q-item-label>
                         <q-item-label class="text-weight-medium"
                           >{{ taskStore.currentTask.expected_effort || 0 }} hrs</q-item-label

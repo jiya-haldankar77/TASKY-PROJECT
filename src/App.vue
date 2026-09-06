@@ -23,8 +23,8 @@ onMounted(() => {
   if (token && userData) {
     try {
       // Store auth data in localStorage for admin project using the correct keys
-      localStorage.setItem('tasky_token', token);
-      localStorage.setItem('tasky_user', userData);
+      sessionStorage.setItem('tasky_token', token);
+      sessionStorage.setItem('tasky_user', userData);
 
       // Re-initialize auth with the new data
       authStore.initializeAuth();

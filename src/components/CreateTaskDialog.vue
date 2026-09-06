@@ -113,6 +113,19 @@
             hint="Select employees to assign this task to"
           />
 
+          <q-select
+            v-model="form.depends_on_ids"
+            :options="taskOptions"
+            label="Dependencies (Optional)"
+            outlined
+            dense
+            multiple
+            use-chips
+            emit-value
+            map-options
+            hint="Select tasks that must be completed before this task can progress"
+          />
+
 
 
           <div class="row justify-end q-mt-lg">
@@ -164,6 +177,12 @@ const resourceOptions = computed(() => {
   }));
 });
 
+const taskOptions = computed(() => {
+  return taskStore.tasks
+    .filter((t) => !props.taskToEdit || t.id !== props.taskToEdit.id)
+    .map((t) => ({ label: t.title, value: t.id }));
+});
+
 const statusOptions = [
   { label: 'Not Started', value: 'not-started' },
   { label: 'In Progress', value: 'in-progress' },
@@ -189,6 +208,7 @@ const form = ref({
   resources_needed: 1,
   deadline: '',
   assignee_ids: [] as number[],
+  depends_on_ids: [] as number[],
 });
 
 watch(
@@ -215,6 +235,9 @@ watch(
           assignee_ids: props.taskToEdit.assignees
             ? props.taskToEdit.assignees.map((a: any) => a.id)
             : [],
+          depends_on_ids: props.taskToEdit.dependsOn
+            ? props.taskToEdit.dependsOn.map((d: any) => d.depends_on_id)
+            : [],
         };
       } else {
         isEdit.value = false;
@@ -233,6 +256,7 @@ watch(
           resources_needed: 1,
           deadline: '',
           assignee_ids: [],
+          depends_on_ids: [],
         };
       }
     }

@@ -373,3 +373,342 @@ export async function rebalanceWorkloads(pool, orgId) {
 
   return { success: true, tasksUnassigned, assignedCount };
 }
+// --- NEW SCHEDULING ENGINE FUNCTIONS ---
+
+/**
+ * Computes urgency score based on priority, deadline, and interrupt status.
+ */
+export function computeUrgencyScore(task) {
+  const weights = { critical: 40, high: 30, medium: 20, low: 10 };
+  const deadlineDate = new Date(task.deadline || new Date());
+  const now = new Date();
+  const timeDiff = deadlineDate.getTime() - now.getTime();
+  const daysLeft = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+  
+  const interruptPenalty = ['blocked','on-hold'].includes(task.status) ? 0.5 : 0;
+  const priorityWeight = weights[task.priority] || 20;
+  
+  return (priorityWeight / daysLeft) * (1 + interruptPenalty);
+}
+
+/**
+ * Builds a reschedule proposal and queues it for review or auto-applies.
+ */
+export async function buildRescheduleProposal(pool, orgId, triggerType, triggerRefId, affectedUserIds) {
+  if (!affectedUserIds || affectedUserIds.length === 0) return null;
+  
+  // 1. Fetch active tasks for users
+  const [tasks] = await pool.execute(
+    `SELECT t.*, ta.user_id 
+     FROM task t
+     JOIN task_assignment ta ON t.id = ta.task_id
+     JOIN project p ON t.project_id = p.id
+     WHERE p.org_id = ? 
+       AND ta.user_id IN (${affectedUserIds.join(',')})
+       AND t.status NOT IN ('completed')
+       AND ta.is_active = 1`,
+    [orgId]
+  );
+  
+  if (tasks.length === 0) return null;
+
+  // 2. Compute urgency scores
+  tasks.forEach(t => {
+    t.computed_urgency = computeUrgencyScore(t);
+  });
+  
+  // 3. Sort by urgency (descending)
+  tasks.sort((a, b) => b.computed_urgency - a.computed_urgency);
+  
+  // 4 & 5. Slot into calendar and walk dependency DAG
+  const changes = [];
+  const changesMap = new Map(); // Keep track of latest end date per task
+  const today = new Date();
+  let currentStart = new Date(today);
+  
+  for (const t of tasks) {
+    if (changesMap.has(t.id)) continue; // Already processed as a dependency
+
+    const durationDays = Math.ceil((t.expected_effort || 8) / 8);
+    const newStart = new Date(currentStart);
+    
+    const newEnd = new Date(newStart);
+    newEnd.setDate(newStart.getDate() + durationDays);
+    
+    changes.push({
+      task_id: t.id,
+      old_start: t.scheduled_start,
+      new_start: newStart.toISOString().split('T')[0],
+      old_end: t.scheduled_end,
+      new_end: newEnd.toISOString().split('T')[0],
+      urgency_score: t.computed_urgency,
+      reason: `Reschedule triggered by ${triggerType}`
+    });
+    changesMap.set(t.id, newEnd);
+    
+    // Increment base calendar slot for next root task
+    currentStart = new Date(newEnd);
+    currentStart.setDate(currentStart.getDate() + 1); // simple stagger
+    
+    // BFS dependency walk
+    const visited = new Set();
+    const queue = [{ taskId: t.id, end: newEnd }];
+    
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (visited.has(current.taskId)) continue;
+      visited.add(current.taskId);
+      
+      const [deps] = await pool.execute(
+        `SELECT t.* FROM task_dependency td
+         JOIN task t ON t.id = td.task_id
+         WHERE td.depends_on_id = ? AND t.status != 'completed'`,
+        [current.taskId]
+      );
+      
+      for (const dep of deps) {
+        const depDuration = Math.ceil((dep.expected_effort || 8) / 8);
+        const depStart = new Date(current.end);
+        depStart.setDate(depStart.getDate() + 1); // Start day after predecessor ends
+        
+        const depEnd = new Date(depStart);
+        depEnd.setDate(depStart.getDate() + depDuration);
+        
+        // Push only if it forces the dependency later than currently planned
+        if (!changesMap.has(dep.id) || changesMap.get(dep.id) < depEnd) {
+          const existingIdx = changes.findIndex(c => c.task_id === dep.id);
+          const depChange = {
+            task_id: dep.id,
+            old_start: dep.scheduled_start,
+            new_start: depStart.toISOString().split('T')[0],
+            old_end: dep.scheduled_end,
+            new_end: depEnd.toISOString().split('T')[0],
+            urgency_score: dep.computed_urgency || computeUrgencyScore(dep),
+            reason: 'Cascaded due to predecessor delay'
+          };
+          
+          if (existingIdx >= 0) {
+            changes[existingIdx] = depChange;
+          } else {
+            changes.push(depChange);
+          }
+          
+          changesMap.set(dep.id, depEnd);
+          queue.push({ taskId: dep.id, end: depEnd });
+        }
+      }
+    }
+  }
+  
+  // 6. Save proposal
+  const payloadStr = JSON.stringify(changes);
+  const [result] = await pool.execute(
+    `INSERT INTO reschedule_event 
+      (org_id, trigger_type, trigger_ref_id, affected_task_count, status, payload)
+      VALUES (?, ?, ?, ?, 'pending_review', ?)`,
+    [orgId, triggerType, triggerRefId, changes.length, payloadStr]
+  );
+  
+  // Emit notification to PM
+  const [pmRows] = await pool.execute(
+    "SELECT u.id FROM user u JOIN role r ON u.role_id = r.id WHERE u.org_id = ? AND r.access_level = 'pm'",
+    [orgId]
+  );
+  for (const pm of pmRows) {
+    await pool.execute(
+      "INSERT INTO notification (user_id, title, message, type, related_entity_type, related_entity_id, is_read) VALUES (?, ?, ?, 'task_rescheduled', 'reschedule_event', ?, 0)",
+      [pm.id, 'Review Reschedule', `A ${triggerType} event caused a schedule change proposal affecting ${changes.length} tasks.`, result.insertId]
+    );
+  }
+
+  return {
+    reschedule_event_id: result.insertId,
+    changes,
+    affected_task_count: changes.length
+  };
+}
+
+/**
+ * Applies a confirmed reschedule proposal to the database.
+ */
+export async function applyRescheduleProposal(pool, eventId, appliedBy = null) {
+  const [events] = await pool.execute('SELECT * FROM reschedule_event WHERE id = ?', [eventId]);
+  if (events.length === 0) throw new Error('Event not found');
+  
+  const event = events[0];
+  if (event.status !== 'pending_review' && event.status !== 'auto_applied') {
+    return { success: false, message: 'Already processed' };
+  }
+  
+  const changes = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+  
+  for (const c of changes) {
+    await pool.execute(
+      `UPDATE task 
+       SET scheduled_start = ?, scheduled_end = ?, urgency_score = ?
+       WHERE id = ?`,
+      [c.new_start, c.new_end, c.urgency_score, c.task_id]
+    );
+    
+    await pool.execute(
+      `INSERT INTO task_schedule_history
+       (task_id, reschedule_event_id, old_scheduled_start, new_scheduled_start, old_scheduled_end, new_scheduled_end, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [c.task_id, eventId, c.old_start || null, c.new_start, c.old_end || null, c.new_end, c.reason]
+    );
+  }
+  
+  await pool.execute(
+    `UPDATE reschedule_event SET status = 'pm_confirmed', applied_by = ?, reviewed_at = NOW() WHERE id = ?`,
+    [appliedBy, eventId]
+  );
+  
+  // Emit notification to affected employees
+  const employeeIds = new Set();
+  for (const c of changes) {
+    const [assignees] = await pool.execute('SELECT user_id FROM task_assignment WHERE task_id = ? AND is_active = 1', [c.task_id]);
+    assignees.forEach(a => employeeIds.add(a.user_id));
+  }
+  for (const empId of employeeIds) {
+    await pool.execute(
+      "INSERT INTO notification (user_id, title, message, type, related_entity_type, related_entity_id, is_read) VALUES (?, ?, ?, 'task_rescheduled', 'reschedule_event', ?, 0)",
+      [empId, 'Schedule Updated', 'Your task schedule has been updated.', eventId]
+    );
+  }
+
+  return { success: true, changesApplied: changes.length };
+}
+
+/**
+ * Triggered when a task is interrupted (status changed to blocked or on-hold).
+ */
+export async function handleTaskInterrupt(pool, taskId, reason) {
+  // Update interrupt count
+  await pool.execute('UPDATE task SET interrupt_count = interrupt_count + 1 WHERE id = ?', [taskId]);
+  
+  // Get assignees and org
+  const [taskRows] = await pool.execute(
+    `SELECT t.id, p.org_id, ta.user_id
+     FROM task t
+     JOIN project p ON t.project_id = p.id
+     JOIN task_assignment ta ON t.id = ta.task_id
+     WHERE t.id = ? AND ta.is_active = 1`,
+    [taskId]
+  );
+  
+  if (taskRows.length === 0) return null;
+  const orgId = taskRows[0].org_id;
+  const userIds = taskRows.map(r => r.user_id);
+  
+  const proposal = await buildRescheduleProposal(pool, orgId, 'interrupt', taskId, userIds);
+  
+  if (proposal && proposal.affected_task_count <= 3) {
+    // Auto-apply if threshold met
+    await applyRescheduleProposal(pool, proposal.reschedule_event_id);
+    await pool.execute("UPDATE reschedule_event SET status = 'auto_applied' WHERE id = ?", [proposal.reschedule_event_id]);
+  }
+  return proposal;
+}
+
+/**
+ * Triggered when leave is approved.
+ */
+export async function handleLeaveApproval(pool, leaveRequestId) {
+  const [leaveRows] = await pool.execute('SELECT * FROM leave_request WHERE id = ?', [leaveRequestId]);
+  if (leaveRows.length === 0) return null;
+  const leave = leaveRows[0];
+  
+  // Update employee availability (simplified)
+  await pool.execute(
+    `UPDATE employee_availability 
+     SET is_available = 0, day_type = 'leave'
+     WHERE user_id = ? AND date >= ? AND date <= ?`,
+    [leave.user_id, leave.start_date, leave.end_date]
+  );
+  
+  // Get org id from user
+  const [userRows] = await pool.execute('SELECT org_id FROM user WHERE id = ?', [leave.user_id]);
+  if (userRows.length === 0) return null;
+  
+  const proposal = await buildRescheduleProposal(pool, userRows[0].org_id, 'leave', leaveRequestId, [leave.user_id]);
+  
+  if (proposal) {
+    // Leave causing deadline breach always needs PM approval, checking if auto-apply is safe.
+    // For simplicity in this demo, always send to PM review if >0 tasks affected.
+    // (As per Q2: Always require PM approval)
+  }
+  return proposal;
+}
+
+/**
+ * Triggered when a task is completed before scheduled end.
+ */
+export async function handleEarlyCompletion(pool, taskId) {
+  const [taskRows] = await pool.execute(
+    `SELECT t.id, p.org_id, ta.user_id
+     FROM task t
+     JOIN project p ON t.project_id = p.id
+     JOIN task_assignment ta ON t.id = ta.task_id
+     WHERE t.id = ? AND ta.is_active = 1`,
+    [taskId]
+  );
+  if (taskRows.length === 0) return null;
+  
+  const orgId = taskRows[0].org_id;
+  const userIds = taskRows.map(r => r.user_id);
+  
+  const proposal = await buildRescheduleProposal(pool, orgId, 'early_done', taskId, userIds);
+  if (proposal) {
+    // Auto apply early completion
+    await applyRescheduleProposal(pool, proposal.reschedule_event_id);
+    await pool.execute("UPDATE reschedule_event SET status = 'auto_applied' WHERE id = ?", [proposal.reschedule_event_id]);
+  }
+  return proposal;
+}
+
+/**
+ * Triggered by cron job daily to detect delayed tasks.
+ */
+export async function handleDelayDetection(pool, orgId) {
+  // Simplified logic: finds tasks that haven't been updated in 5 days
+  const [delayedTasks] = await pool.execute(
+    `SELECT id FROM task 
+     WHERE status IN ('not-started', 'in-progress') 
+       AND project_id IN (SELECT id FROM project WHERE org_id = ?)
+       AND updated_at < DATE_SUB(NOW(), INTERVAL 5 DAY)`,
+    [orgId]
+  );
+  
+  if (delayedTasks.length === 0) return null;
+  
+  for (const t of delayedTasks) {
+    const [assignees] = await pool.execute('SELECT user_id FROM task_assignment WHERE task_id = ? AND is_active = 1', [t.id]);
+    const userIds = assignees.map(a => a.user_id);
+    if (userIds.length > 0) {
+      await buildRescheduleProposal(pool, orgId, 'delay', t.id, userIds);
+    }
+  }
+}
+
+
+/**
+ * Checks if a task is blocked by any incomplete dependencies.
+ */
+export async function checkTaskDependencies(pool, taskId) {
+  const [deps] = await pool.execute(
+    `SELECT t.status, t.title
+     FROM task_dependency td
+     JOIN task t ON t.id = td.depends_on_id
+     WHERE td.task_id = ?`,
+    [taskId]
+  );
+  
+  const incomplete = deps.filter(d => d.status !== 'completed');
+  if (incomplete.length > 0) {
+    return {
+      isBlocked: true,
+      blockingTasks: incomplete.map(t => t.title)
+    };
+  }
+  return { isBlocked: false };
+}

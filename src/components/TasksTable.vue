@@ -102,6 +102,32 @@
         </q-td>
       </template>
 
+      <!-- Scheduled Window Column -->
+      <template v-slot:body-cell-scheduled="props">
+        <q-td :props="props">
+          <div class="column items-center">
+            <template v-if="props.row.scheduled_start && props.row.scheduled_end">
+              <div class="text-weight-bold text-grey-8" style="font-size: 11px; white-space: nowrap;">
+                {{ formatDate(props.row.scheduled_start) }} ➡ {{ formatDate(props.row.scheduled_end) }}
+              </div>
+              <q-badge
+                v-if="isOffTrack(props.row)"
+                color="red-1" text-color="red" label="At Risk" class="q-mt-xs" style="font-size: 9px"
+              />
+              <q-badge
+                v-else-if="isTight(props.row)"
+                color="orange-1" text-color="orange" label="Tight" class="q-mt-xs" style="font-size: 9px"
+              />
+              <q-badge
+                v-else
+                color="green-1" text-color="green" label="On Track" class="q-mt-xs" style="font-size: 9px"
+              />
+            </template>
+            <span v-else class="text-caption text-grey-5">Unscheduled</span>
+          </div>
+        </q-td>
+      </template>
+
       <!-- Assignee Column -->
       <template v-slot:body-cell-assignee="props">
         <q-td :props="props">
@@ -300,6 +326,7 @@ const columns: QTableProps['columns'] = [
   { name: 'priority', label: 'Priority', field: 'priority', align: 'center', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'progress', label: 'Progress', field: 'progress', align: 'left', sortable: true },
+  { name: 'scheduled', label: 'Scheduled Window', field: 'scheduled_start', align: 'center', sortable: true },
   { name: 'assignee', label: 'Assignee', field: 'assignees', align: 'center' },
   { name: 'deadline', label: 'Deadline', field: 'deadline', align: 'left', sortable: true },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
@@ -347,6 +374,19 @@ const isOverdue = (task: any) => {
   if (task.status === 'completed') return false;
   if (!task.deadline) return false;
   return new Date(task.deadline) < new Date(new Date().setHours(0, 0, 0, 0));
+};
+
+const isTight = (task: any) => {
+  if (!task.scheduled_end || !task.deadline) return false;
+  const end = new Date(task.scheduled_end);
+  const deadline = new Date(task.deadline);
+  const diffDays = (deadline.getTime() - end.getTime()) / (1000 * 3600 * 24);
+  return diffDays > 0 && diffDays <= 2;
+};
+
+const isOffTrack = (task: any) => {
+  if (!task.scheduled_end || !task.deadline) return false;
+  return new Date(task.scheduled_end) > new Date(task.deadline);
 };
 
 const getDeadlineText = (task: any) => {

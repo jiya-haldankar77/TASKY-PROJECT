@@ -162,5 +162,98 @@ export default function schedulingRoutes(pool) {
     }
   });
 
+  // GET /api/pm/schedule/queue
+  router.get('/queue', async (req, res) => {
+    try {
+      const orgId = req.user.org_id;
+      const [events] = await pool.execute(
+        `SELECT * FROM reschedule_event WHERE org_id = ? AND status = 'pending_review' ORDER BY created_at DESC`,
+        [orgId]
+      );
+      res.json({ success: true, events });
+    } catch (error) {
+      console.error('Queue error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // POST /api/pm/schedule/queue/:eventId/confirm
+  router.post('/queue/:eventId/confirm', async (req, res) => {
+    try {
+      const { applyRescheduleProposal } = await import('../services/schedulingEngine.js');
+      const pmId = req.user.id;
+      const result = await applyRescheduleProposal(pool, req.params.eventId, pmId);
+      res.json(result);
+    } catch (error) {
+      console.error('Confirm error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // POST /api/pm/schedule/queue/:eventId/reject
+  router.post('/queue/:eventId/reject', async (req, res) => {
+    try {
+      await pool.execute(
+        `UPDATE reschedule_event SET status = 'pm_rejected', reviewed_at = NOW() WHERE id = ?`,
+        [req.params.eventId]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Reject error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // POST /api/pm/schedule/trigger-reschedule
+  router.post('/trigger-reschedule', async (req, res) => {
+    try {
+      const { buildRescheduleProposal } = await import('../services/schedulingEngine.js');
+      const orgId = req.user.org_id;
+      // Get all active users
+      const [users] = await pool.execute('SELECT id FROM user WHERE org_id = ? AND is_active = 1', [orgId]);
+      const userIds = users.map(u => u.id);
+      const proposal = await buildRescheduleProposal(pool, orgId, 'manual', null, userIds);
+      res.json({ success: true, proposal });
+    } catch (error) {
+      console.error('Trigger error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // GET /api/pm/schedule/task/:taskId/history
+  router.get('/task/:taskId/history', async (req, res) => {
+    try {
+      const [history] = await pool.execute(
+        `SELECT * FROM task_schedule_history WHERE task_id = ? ORDER BY created_at DESC`,
+        [req.params.taskId]
+      );
+      res.json({ success: true, history });
+    } catch (error) {
+      console.error('History error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // GET /api/pm/schedule/timeline
+  router.get('/timeline', async (req, res) => {
+    try {
+      const orgId = req.user.org_id;
+      const [tasks] = await pool.execute(
+        `SELECT t.*, p.name as project_name, u.first_name, u.last_name 
+         FROM task t
+         JOIN project p ON t.project_id = p.id
+         LEFT JOIN task_assignment ta ON t.id = ta.task_id AND ta.is_active = 1
+         LEFT JOIN user u ON ta.user_id = u.id
+         WHERE p.org_id = ? AND t.status != 'completed'
+         ORDER BY t.urgency_score DESC, t.deadline ASC`,
+        [orgId]
+      );
+      res.json({ success: true, tasks });
+    } catch (error) {
+      console.error('Timeline error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
   return router;
 }

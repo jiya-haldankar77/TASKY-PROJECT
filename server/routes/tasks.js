@@ -3,6 +3,9 @@ import {
   recommendResources,
   analyzeImpact,
   runGlobalAutoScheduler,
+  handleTaskInterrupt,
+  handleEarlyCompletion,
+  checkTaskDependencies
 } from '../services/schedulingEngine.js';
 const router = Router();
 
@@ -219,6 +222,7 @@ export default function taskRoutes(pool) {
         assignee_ids,
         auto_assign,
         resources_needed,
+        depends_on_ids,
       } = req.body;
 
       if (!project_id || !title || !deadline) {
@@ -284,6 +288,16 @@ export default function taskRoutes(pool) {
         }
       }
 
+      // Insert dependencies
+      if (depends_on_ids && depends_on_ids.length > 0) {
+        for (const depId of depends_on_ids) {
+          await pool.execute(
+            'INSERT INTO task_dependency (task_id, depends_on_id) VALUES (?, ?)',
+            [taskId, depId]
+          );
+        }
+      }
+
       // Update project progress (manual calculation instead of stored procedure)
       const [taskStats] = await pool.execute(
         `SELECT
@@ -325,6 +339,7 @@ export default function taskRoutes(pool) {
         phase_id,
         assignee_ids,
         resources_needed,
+        depends_on_ids,
       } = req.body;
 
       // Get current task for project_id
@@ -385,6 +400,16 @@ export default function taskRoutes(pool) {
         }
       }
 
+      if (depends_on_ids !== undefined) {
+        await pool.execute('DELETE FROM task_dependency WHERE task_id = ?', [taskId]);
+        for (const depId of depends_on_ids) {
+          await pool.execute(
+            'INSERT INTO task_dependency (task_id, depends_on_id) VALUES (?, ?)',
+            [taskId, depId]
+          );
+        }
+      }
+
       // Update project progress (manual calculation)
       const [taskStats] = await pool.execute(
         `SELECT
@@ -405,12 +430,21 @@ export default function taskRoutes(pool) {
 
       const [updated] = await pool.execute('SELECT * FROM task WHERE id = ?', [taskId]);
 
-      // If status changed to completed or priority changed, trigger global auto-scheduler to reallocate freed capacity
-      if (
-        (status === 'completed' && current[0].status !== 'completed') ||
-        (priority !== undefined && priority !== current[0].priority)
-      ) {
+      // Hook into the scheduler
+      if ((status === 'blocked' || status === 'on-hold') && current[0].status !== status) {
+        await handleTaskInterrupt(pool, taskId, 'Status changed to ' + status);
+      }
+      if (status === 'completed' && current[0].status !== 'completed') {
+        await handleEarlyCompletion(pool, taskId);
         await runGlobalAutoScheduler(pool, current[0].org_id || req.user.org_id);
+      } else if (priority !== undefined && priority !== current[0].priority) {
+        await runGlobalAutoScheduler(pool, current[0].org_id || req.user.org_id);
+        const { buildRescheduleProposal } = await import('../services/schedulingEngine.js');
+        const [users] = await pool.execute('SELECT user_id FROM task_assignment WHERE task_id = ? AND is_active = 1', [taskId]);
+        const userIds = users.map(u => u.user_id);
+        if (userIds.length > 0) {
+          await buildRescheduleProposal(pool, current[0].org_id || req.user.org_id, 'priority_up', taskId, userIds);
+        }
       }
 
       // Fetch fresh assignees to return to frontend
@@ -504,6 +538,12 @@ export default function taskRoutes(pool) {
       const pmId = req.user.id;
       const { progress, notes } = req.body;
 
+      // Dependency check
+      const depCheck = await checkTaskDependencies(pool, taskId);
+      if (depCheck.isBlocked) {
+        return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
+      }
+
       const [current] = await pool.execute('SELECT progress, project_id FROM task WHERE id = ?', [
         taskId,
       ]);
@@ -581,15 +621,16 @@ export default function taskRoutes(pool) {
   router.post('/:id/subtasks', async (req, res) => {
     try {
       const taskId = req.params.id;
-      const { title } = req.body;
+      const { title, estimated_hours } = req.body;
+      const hours = estimated_hours || 0;
 
       if (!title) {
         return res.status(400).json({ success: false, error: 'Title is required' });
       }
 
       const [result] = await pool.execute(
-        'INSERT INTO subtask (task_id, title, status) VALUES (?, ?, ?)',
-        [taskId, title, 'not-started']
+        'INSERT INTO subtask (task_id, title, status, estimated_hours) VALUES (?, ?, ?, ?)',
+        [taskId, title, 'not-started', hours]
       );
 
       const [newSubtask] = await pool.execute('SELECT * FROM subtask WHERE id = ?', [result.insertId]);
@@ -606,6 +647,12 @@ export default function taskRoutes(pool) {
       const taskId = req.params.id;
       const subtaskId = req.params.subtaskId;
       const { status, progress } = req.body;
+
+      // Dependency check
+      const depCheck = await checkTaskDependencies(pool, taskId);
+      if (depCheck.isBlocked) {
+        return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
+      }
 
       const updates = [];
       const values = [];

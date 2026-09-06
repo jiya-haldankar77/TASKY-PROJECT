@@ -43,6 +43,8 @@ export interface Task {
   planned_end?: string | null;
   actual_start?: string | null;
   actual_end?: string | null;
+  scheduled_start?: string | null;
+  scheduled_end?: string | null;
   expected_effort?: number | string | null;
   progress?: number | string | null;
   priority?: string | null;
@@ -416,8 +418,8 @@ function getTaskWorkSegments(task: Task): {
   }
 
   // Fallback: No schedule allocations yet (e.g. unassigned or pending recalculation)
-  const rawStart = task.planned_start || task.actual_start || task.start_date;
-  const rawEnd = task.planned_end || task.deadline || task.actual_end;
+  const rawStart = task.scheduled_start || task.planned_start || task.actual_start || task.start_date;
+  const rawEnd = task.deadline || task.scheduled_end || task.planned_end || task.actual_end;
   const startDate = rawStart ? parseDateLocal(rawStart) : new Date();
   startDate.setHours(0, 0, 0, 0);
 

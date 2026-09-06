@@ -13,6 +13,9 @@ import organisationRoutes from './routes/organisation.js';
 import notificationRoutes from './routes/notifications.js';
 import calendarRoutes from './routes/calendar.js';
 import schedulingRoutes from './routes/scheduling.js';
+import leavesRoutes from './routes/leaves.js';
+import cron from 'node-cron';
+import { handleDelayDetection, checkTaskDependencies } from './services/schedulingEngine.js';
 const app = express();
 const port = 3001;
 
@@ -694,16 +697,26 @@ app.put('/api/employee/subtasks/:id', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      // Get task_id to check dependencies
+      const [subtask] = await connection.execute(
+        'SELECT task_id FROM subtask WHERE id = ?',
+        [subtaskId]
+      );
+      
+      if (subtask && subtask.length > 0) {
+        const taskId = subtask[0].task_id;
+        
+        // Dependency check
+        const depCheck = await checkTaskDependencies(pool, taskId);
+        if (depCheck.isBlocked) {
+          return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
+        }
+      }
+
       // Update subtask completion status
       await connection.execute(
         'UPDATE subtask SET completed = ?, status = ?, updated_at = NOW() WHERE id = ?',
         [completed ? 1 : 0, completed ? 'completed' : 'not-started', subtaskId]
-      );
-
-      // Get task_id to recalculate parent task progress
-      const [subtask] = await connection.execute(
-        'SELECT task_id FROM subtask WHERE id = ?',
-        [subtaskId]
       );
 
       if (subtask && subtask.length > 0) {
@@ -763,13 +776,14 @@ app.put('/api/employee/subtasks/:id', async (req, res) => {
 app.post('/api/employee/tasks/:id/subtasks', async (req, res) => {
   try {
     const taskId = req.params.id;
-    const { title } = req.body;
+    const { title, estimated_hours } = req.body;
+    const hours = estimated_hours || 0;
 
     const connection = await pool.getConnection();
     try {
       const [result] = await connection.execute(
-        'INSERT INTO subtask (task_id, title, status, completed, progress) VALUES (?, ?, ?, ?, ?)',
-        [taskId, title, 'not-started', 0, 0]
+        'INSERT INTO subtask (task_id, title, status, completed, progress, estimated_hours) VALUES (?, ?, ?, ?, ?, ?)',
+        [taskId, title, 'not-started', 0, 0, hours]
       );
 
       // Get previous progress
@@ -1244,6 +1258,12 @@ app.put('/api/employee/tasks/:id', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      // Dependency check
+      const depCheck = await checkTaskDependencies(pool, taskId);
+      if (depCheck.isBlocked) {
+        return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
+      }
+
       // Build dynamic update query to handle undefined values
       const updates = [];
       const params = [];
@@ -1437,7 +1457,7 @@ app.post('/api/employee/work-log', async (req, res) => {
 // POST /api/employee/tasks - Create self-assigned task
 app.post('/api/employee/tasks', async (req, res) => {
   try {
-    const { title, description, project_id, priority, deadline, expected_effort, user_id } = req.body;
+    const { title, description, project_id, priority, deadline, expected_effort, user_id, depends_on_ids } = req.body;
     const userId = user_id || 1; // Mock user ID for testing
 
     const connection = await pool.getConnection();
@@ -1452,6 +1472,16 @@ app.post('/api/employee/tasks', async (req, res) => {
         `INSERT INTO task_assignment (task_id, user_id, assigned_by, is_active) VALUES (?, ?, ?, 1)`,
         [result.insertId, userId, userId]
       );
+
+      // Insert dependencies
+      if (depends_on_ids && depends_on_ids.length > 0) {
+        for (const depId of depends_on_ids) {
+          await connection.execute(
+            'INSERT INTO task_dependency (task_id, depends_on_id) VALUES (?, ?)',
+            [result.insertId, depId]
+          );
+        }
+      }
 
       res.json({ success: true, taskId: result.insertId });
     } finally {
@@ -1471,6 +1501,12 @@ app.put('/api/employee/tasks/:id', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      // Dependency check
+      const depCheck = await checkTaskDependencies(pool, taskId);
+      if (depCheck.isBlocked) {
+        return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
+      }
+
       await connection.execute(
         `UPDATE task SET progress = ?, status = ?, actual_effort = ? WHERE id = ?`,
         [progress, status, actual_effort, taskId]
@@ -1702,6 +1738,19 @@ app.use('/api/pm/org', organisationRoutes(pool));
 app.use('/api/pm/notifications', notificationRoutes(pool));
 app.use('/api/pm/calendar', calendarRoutes(pool));
 app.use('/api/pm/schedule', schedulingRoutes(pool));
+app.use('/api/pm/leaves', leavesRoutes(pool));
+
+// Run delay detection every day at 8:00 AM
+cron.schedule('0 8 * * 1-5', async () => {
+  try {
+    const [orgs] = await pool.execute('SELECT DISTINCT org_id FROM project WHERE status = "active"');
+    for (const { org_id } of orgs) {
+      await handleDelayDetection(pool, org_id);
+    }
+  } catch (error) {
+    console.error('Cron job error:', error);
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

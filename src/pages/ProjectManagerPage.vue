@@ -17,6 +17,10 @@
         <div class="text-grey-7 text-caption">Overview of what needs your attention today</div>
       </div>
       <div class="row items-center q-gutter-sm">
+        <q-btn v-if="pendingRescheduleCount > 0" color="orange" icon="event" outline round @click="showScheduleReview = true">
+          <q-badge color="red" floating>{{ pendingRescheduleCount }}</q-badge>
+          <q-tooltip>Pending Reschedule Reviews</q-tooltip>
+        </q-btn>
         <q-avatar size="36px" class="cursor-pointer">
           <img :src="authStore.currentUser?.avatar || 'https://cdn.quasar.dev/img/avatar.png'" />
           <q-menu anchor="bottom right" self="top right">
@@ -35,8 +39,6 @@
         </q-avatar>
       </div>
     </div>
-
-
 
     <!-- Tabs -->
     <q-tabs
@@ -1019,6 +1021,15 @@
     <!-- Employee Performance Dialog -->
     <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" />
 
+    <!-- Schedule Review Dialog -->
+    <ScheduleReviewDialog 
+      v-if="pendingScheduleEvent" 
+      v-model="showScheduleReview" 
+      :event="pendingScheduleEvent" 
+      @confirmed="fetchPendingReschedules" 
+      @rejected="fetchPendingReschedules" 
+    />
+
     <!-- Task Detail Dialog -->
     <q-dialog v-model="showTaskDetailDialog">
       <q-card style="min-width: 600px">
@@ -1069,6 +1080,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '../stores/authStore';
 import { useDashboardStore } from '../stores/dashboardStore';
 import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue';
+import ScheduleReviewDialog from '../components/ScheduleReviewDialog.vue';
 const authStore = useAuthStore();
 const { logout } = authStore;
 const dashboardStore = useDashboardStore();
@@ -1093,7 +1105,32 @@ onMounted(() => {
   console.log('Users loaded:', dashboardStore.users);
   // Pre-load completed reviews
   fetchCompletedReviews();
+  fetchPendingReschedules();
 });
+
+const showScheduleReview = ref(false);
+const pendingScheduleEvent = ref(null);
+const pendingRescheduleCount = ref(0);
+
+async function fetchPendingReschedules() {
+  try {
+    const res = await fetch('http://localhost:3001/api/pm/schedule/queue', {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    });
+    const data = await res.json();
+    if (data.success && data.events.length > 0) {
+      pendingRescheduleCount.value = data.events.length;
+      pendingScheduleEvent.value = data.events[0]; // get oldest
+    } else {
+      pendingRescheduleCount.value = 0;
+      pendingScheduleEvent.value = null;
+      showScheduleReview.value = false;
+    }
+  } catch (err) {
+    console.error('Failed to fetch reschedules', err);
+  }
+}
+
 
 
 const filteredUsers = computed(() => {

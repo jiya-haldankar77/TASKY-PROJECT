@@ -37,6 +37,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/TasksPage.vue'),
         meta: { requiresRole: 'pm' },
       },
+
       {
         path: 'resources',
         component: () => import('@/pages/ResourcesPage.vue'),
