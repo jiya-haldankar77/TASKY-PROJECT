@@ -54,7 +54,7 @@
     <div class="row q-col-gutter-md">
       <!-- Points Breakdown -->
       <div class="col-6">
-        <q-card>
+        <q-card class="performance-panel full-height">
           <q-card-section>
             <div class="text-h6 text-weight-bold">Points Breakdown</div>
             <div class="text-caption text-grey-7">How you earned your points</div>
@@ -92,7 +92,7 @@
 
       <!-- Recent Activity -->
       <div class="col-6">
-        <q-card>
+        <q-card class="performance-panel full-height">
           <q-card-section>
             <div class="text-h6 text-weight-bold">Recent Activity</div>
             <div class="text-caption text-grey-7">Your latest reviews and completions</div>
@@ -130,7 +130,7 @@
     </div>
 
     <!-- Task Statistics -->
-    <q-card class="q-mt-md">
+    <q-card class="performance-panel performance-stats q-mt-md">
       <q-card-section>
         <div class="text-h6 text-weight-bold">Task Statistics</div>
         <div class="text-caption text-grey-7">Your task completion breakdown</div>
@@ -293,3 +293,8 @@ function formatDate(date: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 </script>
+
+<style scoped>
+.performance-panel { min-height: 320px; border: 1px solid #e5eaf0; border-radius: 14px; box-shadow: 0 7px 20px rgba(32, 54, 83, .05); }
+.performance-stats { min-height: 190px; }
+</style>

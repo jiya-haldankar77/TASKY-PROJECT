@@ -6,7 +6,7 @@
 
     <div class="row items-center justify-between q-mb-md">
       <div>
-        <div class="text-h5 text-weight-bold">Planner</div>
+        <div class="text-h5 text-weight-bold">Employee Planner</div>
         <div class="text-caption text-grey-6">
           Plan your work and keep your daily updates on track.
         </div>

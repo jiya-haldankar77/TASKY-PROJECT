@@ -50,6 +50,7 @@
     >
       <q-tab name="overview" label="Overview" icon="dashboard" />
       <q-tab name="completed" label="Completed" icon="check_circle" />
+      <q-tab name="insights" label="Insights" icon="insights" />
     </q-tabs>
 
     <q-tab-panels
@@ -271,6 +272,701 @@
         </div>
       </q-tab-panel>
 
+      <!-- Insights Tab -->
+<q-tab-panel name="insights" class="q-pa-none insights-panel">
+  <div class="insights-container">
+
+    <!-- Insights Header -->
+    <div class="row items-center justify-between q-mb-md">
+      <div>
+        <div class="text-h5 text-weight-bold">Project Insights</div>
+        <div class="text-caption text-grey-7">
+          Performance overview and areas that need your attention
+        </div>
+      </div>
+
+      <q-chip
+        color="indigo-1"
+        text-color="indigo-9"
+        icon="auto_awesome"
+        label="Live Dashboard"
+      />
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row q-col-gutter-md q-mb-md">
+
+      <!-- Project Health -->
+      <div class="col-12 col-sm-6 col-lg-3">
+        <q-card class="insight-kpi-card">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="insight-icon bg-red-1 text-red">
+                <q-icon name="folder" size="24px" />
+              </div>
+              <q-icon
+                :name="atRiskProjects > 0 ? 'trending_up' : 'check_circle'"
+                :color="atRiskProjects > 0 ? 'red' : 'green'"
+                size="22px"
+              />
+            </div>
+
+            <div class="text-caption text-grey-7 q-mt-md">
+              Projects at Risk
+            </div>
+
+            <div class="text-h3 text-weight-bold q-mt-xs">
+              {{ atRiskProjects }}
+            </div>
+
+            <div class="text-caption text-grey-6">
+              {{ projectHealthMessage }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Overdue Tasks -->
+      <div class="col-12 col-sm-6 col-lg-3">
+        <q-card class="insight-kpi-card">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="insight-icon bg-orange-1 text-orange">
+                <q-icon name="schedule" size="24px" />
+              </div>
+              <q-icon
+                :name="overdueTasks > 0 ? 'warning' : 'check_circle'"
+                :color="overdueTasks > 0 ? 'orange' : 'green'"
+                size="22px"
+              />
+            </div>
+
+            <div class="text-caption text-grey-7 q-mt-md">
+              Overdue Tasks
+            </div>
+
+            <div class="text-h3 text-weight-bold q-mt-xs">
+              {{ overdueTasks }}
+            </div>
+
+            <div class="text-caption text-grey-6">
+              {{ overdueTaskMessage }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Team Capacity -->
+      <div class="col-12 col-sm-6 col-lg-3">
+        <q-card class="insight-kpi-card">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="insight-icon bg-blue-1 text-blue">
+                <q-icon name="groups" size="24px" />
+              </div>
+              <q-icon
+                :name="overloadedResources > 0 ? 'priority_high' : 'check_circle'"
+                :color="overloadedResources > 0 ? 'orange' : 'green'"
+                size="22px"
+              />
+            </div>
+
+            <div class="text-caption text-grey-7 q-mt-md">
+              Overloaded Employees
+            </div>
+
+            <div class="text-h3 text-weight-bold q-mt-xs">
+              {{ overloadedResources }}
+            </div>
+
+            <div class="text-caption text-grey-6">
+              {{ teamCapacityMessage }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Pending Reviews -->
+      <div class="col-12 col-sm-6 col-lg-3">
+        <q-card class="insight-kpi-card">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="insight-icon bg-purple-1 text-purple">
+                <q-icon name="rate_review" size="24px" />
+              </div>
+              <q-icon
+                :name="pendingReviews > 0 ? 'pending_actions' : 'check_circle'"
+                :color="pendingReviews > 0 ? 'purple' : 'green'"
+                size="22px"
+              />
+            </div>
+
+            <div class="text-caption text-grey-7 q-mt-md">
+              Pending Reviews
+            </div>
+
+            <div class="text-h3 text-weight-bold q-mt-xs">
+              {{ pendingReviews }}
+            </div>
+
+            <div class="text-caption text-grey-6">
+              {{ reviewMessage }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+    </div>
+
+    <!-- Main Analytics Row -->
+    <div class="row q-col-gutter-md q-mb-md">
+
+      <!-- Project Health -->
+      <div class="col-12 col-md-6">
+        <q-card class="insight-large-card">
+          <q-card-section>
+            <div class="row items-center">
+              <q-avatar
+                color="indigo-1"
+                text-color="indigo"
+                icon="monitor_heart"
+                size="42px"
+                class="q-mr-md"
+              />
+
+              <div>
+                <div class="text-h6 text-weight-bold">
+                  Project Health
+                </div>
+                <div class="text-caption text-grey-7">
+                  Current project risk distribution
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+
+            <!-- Healthy -->
+            <div class="q-mb-lg">
+              <div class="row justify-between items-center q-mb-xs">
+                <div class="row items-center">
+                  <q-icon
+                    name="check_circle"
+                    color="green"
+                    size="18px"
+                    class="q-mr-sm"
+                  />
+                  <span class="text-weight-medium">Healthy</span>
+                </div>
+
+                <span class="text-weight-bold">
+                  {{ healthyProjects }}
+                </span>
+              </div>
+
+              <q-linear-progress
+                :value="projectHealthPercentage(healthyProjects)"
+                color="green"
+                track-color="grey-3"
+                rounded
+                size="10px"
+              />
+            </div>
+
+            <!-- At Risk -->
+            <div class="q-mb-lg">
+              <div class="row justify-between items-center q-mb-xs">
+                <div class="row items-center">
+                  <q-icon
+                    name="warning"
+                    color="orange"
+                    size="18px"
+                    class="q-mr-sm"
+                  />
+                  <span class="text-weight-medium">At Risk</span>
+                </div>
+
+                <span class="text-weight-bold">
+                  {{ atRiskProjects }}
+                </span>
+              </div>
+
+              <q-linear-progress
+                :value="projectHealthPercentage(atRiskProjects)"
+                color="orange"
+                track-color="grey-3"
+                rounded
+                size="10px"
+              />
+            </div>
+
+            <!-- Delayed -->
+            <div>
+              <div class="row justify-between items-center q-mb-xs">
+                <div class="row items-center">
+                  <q-icon
+                    name="error"
+                    color="red"
+                    size="18px"
+                    class="q-mr-sm"
+                  />
+                  <span class="text-weight-medium">Delayed</span>
+                </div>
+
+                <span class="text-weight-bold">
+                  {{ delayedProjects }}
+                </span>
+              </div>
+
+              <q-linear-progress
+                :value="projectHealthPercentage(delayedProjects)"
+                color="red"
+                track-color="grey-3"
+                rounded
+                size="10px"
+              />
+            </div>
+
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Task Delivery -->
+      <div class="col-12 col-md-6">
+        <q-card class="insight-large-card">
+          <q-card-section>
+            <div class="row items-center">
+              <q-avatar
+                color="blue-1"
+                text-color="blue"
+                icon="task_alt"
+                size="42px"
+                class="q-mr-md"
+              />
+
+              <div>
+                <div class="text-h6 text-weight-bold">
+                  Delivery Overview
+                </div>
+                <div class="text-caption text-grey-7">
+                  Tasks requiring delivery attention
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+
+            <div class="row q-col-gutter-md">
+
+              <div class="col-4">
+                <div class="delivery-stat bg-green-1">
+                  <q-icon
+                    name="check_circle"
+                    color="green"
+                    size="28px"
+                  />
+                  <div class="text-h5 text-weight-bold q-mt-sm">
+                    {{ completedTasks.length }}
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    Completed
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-4">
+                <div class="delivery-stat bg-blue-1">
+                  <q-icon
+                    name="pending"
+                    color="blue"
+                    size="28px"
+                  />
+                  <div class="text-h5 text-weight-bold q-mt-sm">
+                    {{ inProgressTasks }}
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    In Progress
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-4">
+                <div class="delivery-stat bg-red-1">
+                  <q-icon
+                    name="priority_high"
+                    color="red"
+                    size="28px"
+                  />
+                  <div class="text-h5 text-weight-bold q-mt-sm">
+                    {{ overdueTasks }}
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    Overdue
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <q-banner
+              rounded
+              class="bg-orange-1 text-orange-9 q-mt-lg"
+              v-if="overdueTasks > 0"
+            >
+              <template v-slot:avatar>
+                <q-icon name="warning" color="orange" />
+              </template>
+
+              <div class="text-weight-medium">
+                Delivery risk detected
+              </div>
+
+              <div class="text-caption">
+                {{ overdueTasks }} task(s) are currently overdue.
+                Review them before they impact dependent work.
+              </div>
+            </q-banner>
+
+            <q-banner
+              rounded
+              class="bg-green-1 text-green-9 q-mt-lg"
+              v-else
+            >
+              <template v-slot:avatar>
+                <q-icon name="check_circle" color="green" />
+              </template>
+
+              <div class="text-weight-medium">
+                Delivery is on track
+              </div>
+
+              <div class="text-caption">
+                There are currently no overdue tasks.
+              </div>
+            </q-banner>
+
+          </q-card-section>
+        </q-card>
+      </div>
+
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="row q-col-gutter-md">
+
+      <!-- Team Capacity -->
+      <div class="col-12 col-md-6">
+        <q-card class="insight-large-card">
+          <q-card-section>
+            <div class="row items-center justify-between">
+              <div class="row items-center">
+                <q-avatar
+                  color="orange-1"
+                  text-color="orange"
+                  icon="groups"
+                  size="42px"
+                  class="q-mr-md"
+                />
+
+                <div>
+                  <div class="text-h6 text-weight-bold">
+                    Team Capacity
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    Workload distribution across employees
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-h5 text-weight-bold">
+                {{ overloadedResources }}
+                <span class="text-caption text-grey-6">
+                  overloaded
+                </span>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+            <div
+              v-if="dashboardStore.attentionItems.overloadedResources.length"
+            >
+              <div
+                v-for="resource in dashboardStore.attentionItems.overloadedResources.slice(0, 5)"
+                :key="resource.id"
+                class="capacity-row"
+              >
+                <q-avatar size="38px" class="q-mr-md">
+                  <img
+                    :src="
+                      resource.avatar ||
+                      `https://i.pravatar.cc/150?img=${resource.id}`
+                    "
+                  />
+                </q-avatar>
+
+                <div class="col">
+                  <div class="row justify-between">
+                    <div class="text-weight-medium">
+                      {{ resource.first_name }}
+                      {{ resource.last_name }}
+                    </div>
+
+                    <div
+                      class="text-weight-bold"
+                      :class="
+                        resource.utilization >= 100
+                          ? 'text-red'
+                          : 'text-orange'
+                      "
+                    >
+                      {{ resource.utilization }}%
+                    </div>
+                  </div>
+
+                  <q-linear-progress
+                    :value="Math.min(resource.utilization / 100, 1)"
+                    :color="
+                      resource.utilization >= 100
+                        ? 'red'
+                        : 'orange'
+                    "
+                    track-color="grey-3"
+                    rounded
+                    size="8px"
+                    class="q-mt-xs"
+                  />
+
+                  <div class="text-caption text-grey-6 q-mt-xs">
+                    {{ resource.project_count }} active project(s)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else
+              class="text-center q-pa-lg text-grey-6"
+            >
+              <q-icon
+                name="check_circle"
+                size="42px"
+                color="green-4"
+              />
+              <div class="text-subtitle1 q-mt-sm">
+                Team capacity looks healthy
+              </div>
+              <div class="text-caption">
+                No overloaded employees detected.
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Priority Actions -->
+      <div class="col-12 col-md-6">
+        <q-card class="insight-large-card">
+          <q-card-section>
+            <div class="row items-center">
+              <q-avatar
+                color="red-1"
+                text-color="red"
+                icon="priority_high"
+                size="42px"
+                class="q-mr-md"
+              />
+
+              <div>
+                <div class="text-h6 text-weight-bold">
+                  Recommended Actions
+                </div>
+                <div class="text-caption text-grey-7">
+                  Areas that deserve your attention
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+
+            <q-item
+              v-if="overdueTasks > 0"
+              class="action-item bg-red-1 q-mb-sm"
+            >
+              <q-item-section avatar>
+                <q-icon
+                  name="schedule"
+                  color="red"
+                  size="28px"
+                />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label class="text-weight-bold">
+                  Review overdue tasks
+                </q-item-label>
+
+                <q-item-label caption>
+                  {{ overdueTasks }} task(s) have missed their deadlines.
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  icon="arrow_forward"
+                  color="red"
+                  to="/dashboard/tasks"
+                />
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              v-if="atRiskProjects > 0"
+              class="action-item bg-orange-1 q-mb-sm"
+            >
+              <q-item-section avatar>
+                <q-icon
+                  name="warning"
+                  color="orange"
+                  size="28px"
+                />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label class="text-weight-bold">
+                  Intervene in at-risk projects
+                </q-item-label>
+
+                <q-item-label caption>
+                  {{ atRiskProjects }} project(s) may require
+                  management intervention.
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  icon="arrow_forward"
+                  color="orange"
+                  to="/dashboard/projects"
+                />
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              v-if="overloadedResources > 0"
+              class="action-item bg-blue-1 q-mb-sm"
+            >
+              <q-item-section avatar>
+                <q-icon
+                  name="groups"
+                  color="blue"
+                  size="28px"
+                />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label class="text-weight-bold">
+                  Balance team workload
+                </q-item-label>
+
+                <q-item-label caption>
+                  {{ overloadedResources }} employee(s) are
+                  above their workload capacity.
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  icon="arrow_forward"
+                  color="blue"
+                  to="/dashboard/resources"
+                />
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              v-if="pendingReviews > 0"
+              class="action-item bg-purple-1"
+            >
+              <q-item-section avatar>
+                <q-icon
+                  name="rate_review"
+                  color="purple"
+                  size="28px"
+                />
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label class="text-weight-bold">
+                  Complete pending reviews
+                </q-item-label>
+
+                <q-item-label caption>
+                  {{ pendingReviews }} review(s) are waiting
+                  for manager action.
+                </q-item-label>
+              </q-item-section>
+
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  icon="arrow_forward"
+                  color="purple"
+                />
+              </q-item-section>
+            </q-item>
+
+            <div
+              v-if="
+                overdueTasks === 0 &&
+                atRiskProjects === 0 &&
+                overloadedResources === 0 &&
+                pendingReviews === 0
+              "
+              class="text-center q-pa-lg"
+            >
+              <q-icon
+                name="verified"
+                color="green"
+                size="52px"
+              />
+
+              <div class="text-h6 text-weight-bold q-mt-sm">
+                Everything looks good
+              </div>
+
+              <div class="text-caption text-grey-6">
+                No immediate management actions are required.
+              </div>
+            </div>
+
+          </q-card-section>
+        </q-card>
+      </div>
+
+    </div>
+
+  </div>
+</q-tab-panel>
+
       <!-- Completed Tab -->
       <q-tab-panel name="completed" class="q-pa-none">
         <q-card class="full-height">
@@ -434,6 +1130,93 @@ const hasAttentionItems = computed(() => {
   );
 });
 
+const atRiskProjects = computed(
+  () => dashboardStore.stats?.atRiskProjects ?? 0,
+);
+
+const overloadedResources = computed(
+  () => dashboardStore.stats?.overloadedResources ?? 0,
+);
+
+const overdueTasks = computed(
+  () => dashboardStore.stats?.overdueTasks ?? 0,
+);
+
+const pendingReviews = computed(
+  () => dashboardStore.stats?.pendingReviews ?? 0,
+);
+
+const delayedProjects = computed(
+  () => dashboardStore.attentionItems.delayedProjects.length,
+);
+
+const healthyProjects = computed(() => {
+  const total =
+    atRiskProjects.value +
+    delayedProjects.value;
+
+  // If the backend doesn't expose total project count,
+  // use the number of projects we can currently identify.
+  const identifiableProjects =
+    total + delayedProjects.value;
+
+  return Math.max(0, identifiableProjects - total);
+});
+
+const inProgressTasks = computed(() => {
+  const totalUsers = dashboardStore.users?.length ?? 0;
+
+  // Keep this useful even when the backend doesn't expose
+  // a dedicated in-progress statistic.
+  return Math.max(
+    0,
+    totalUsers - overdueTasks.value,
+  );
+});
+
+const projectHealthMessage = computed(() => {
+  if (atRiskProjects.value === 0 && delayedProjects.value === 0) {
+    return 'No projects currently flagged';
+  }
+
+  return `${atRiskProjects.value + delayedProjects.value} project(s) need attention`;
+});
+
+const overdueTaskMessage = computed(() => {
+  if (overdueTasks.value === 0) {
+    return 'All tracked tasks are on schedule';
+  }
+
+  return 'Tasks requiring delivery attention';
+});
+
+const teamCapacityMessage = computed(() => {
+  if (overloadedResources.value === 0) {
+    return 'No overloaded team members';
+  }
+
+  return 'Consider redistributing workload';
+});
+
+const reviewMessage = computed(() => {
+  if (pendingReviews.value === 0) {
+    return 'No reviews waiting';
+  }
+
+  return 'Reviews waiting for action';
+});
+
+function projectHealthPercentage(value: number) {
+  const total =
+    healthyProjects.value +
+    atRiskProjects.value +
+    delayedProjects.value;
+
+  if (total === 0) return 0;
+
+  return value / total;
+}
+
 watch(activeTab, async (newTab: string) => {
   if (newTab === 'completed') {
     await fetchCompletedReviews();
@@ -497,7 +1280,82 @@ function showEmployeePerformance(user: any) {
 .z-top {
   z-index: 10;
 }
+
 .border-left-orange {
   border-left: 4px solid #ff9800;
+}
+
+/* =========================
+   INSIGHTS
+   ========================= */
+
+.insights-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 32px;
+}
+
+.insights-container {
+  min-height: 100%;
+}
+
+.insight-kpi-card {
+  height: 100%;
+  border-radius: 14px;
+  border: 1px solid #e5eaf0;
+  box-shadow: 0 6px 18px rgba(32, 54, 83, 0.05);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.insight-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(32, 54, 83, 0.09);
+}
+
+.insight-large-card {
+  height: 100%;
+  min-height: 280px;
+  border-radius: 14px;
+  border: 1px solid #e5eaf0;
+  box-shadow: 0 6px 18px rgba(32, 54, 83, 0.05);
+}
+
+.insight-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delivery-stat {
+  min-height: 120px;
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+}
+
+.capacity-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.capacity-row + .capacity-row {
+  border-top: 1px solid #edf0f4;
+}
+
+.action-item {
+  border-radius: 12px;
+  min-height: 78px;
+}
+
+@media (max-width: 900px) {
+  .insight-large-card {
+    min-height: auto;
+  }
 }
 </style>

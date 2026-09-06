@@ -21,7 +21,13 @@
         >
           <template v-slot:prepend><q-icon name="search" /></template>
         </q-input>
-        <q-select
+        
+      </div>
+    </div>
+
+    <div class="row items-center justify-between q-mb-md">
+      <div class="row items-center">
+      <q-select
           v-model="roleFilter"
           outlined
           dense
@@ -58,8 +64,8 @@
         >
           <q-tooltip>Clear filters</q-tooltip>
         </q-btn>
-      </div>
-    </div>
+        </div>
+        </div>
 
     <!-- Error State -->
     <div v-if="error" class="bg-red-1 q-pa-md rounded-borders q-mb-md">
@@ -87,7 +93,7 @@
           <q-td :props="props">
             <div class="row items-center">
               <q-avatar size="32px" class="q-mr-sm">
-                <img :src="props.row.avatar_url || `https://i.pravatar.cc/150?img=${props.row.id}`" />
+                <img :src="props.row.avatar_url || props.row.avatar || `https://i.pravatar.cc/150?img=${props.row.user_id || props.row.id}`" />
               </q-avatar>
               <div>
                 <div class="text-weight-bold">{{ props.row.first_name }} {{ props.row.last_name }}</div>

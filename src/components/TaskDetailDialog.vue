@@ -224,8 +224,11 @@
             <q-card flat bordered class="bg-white q-pa-md">
               <div class="text-subtitle2 text-weight-bold q-mb-md">Simulate Impact</div>
               <div class="text-body2 text-grey-7 q-mb-md">
-                Simulate changing the progress of this task to see its impact on the project
-                schedule and workloads.
+                Use the task's priority, remaining effort, deadline pressure, assignees and dependencies to estimate delivery risk.
+              </div>
+              <div class="row items-center q-col-gutter-md q-mb-md">
+                <div class="col-8"><div class="text-caption text-grey-7">Expected delay: <strong>{{ delayDays }} days</strong></div><q-slider v-model="delayDays" :min="1" :max="30" label label-always color="primary" /></div>
+                <div class="col-4"><q-badge color="indigo-1" text-color="indigo" label="AI-assisted heuristic" class="q-pa-sm" /></div>
               </div>
               <q-btn
                 outline
@@ -236,7 +239,7 @@
               />
 
               <div v-if="simulationResult" class="q-mt-md q-pa-md bg-grey-2 rounded-borders">
-                <div class="text-weight-bold q-mb-sm">Simulation Results</div>
+                <div class="row items-center justify-between q-mb-sm"><div class="text-weight-bold">Simulation Results</div><q-badge :color="impactScore >= 70 ? 'red' : impactScore >= 40 ? 'orange' : 'green'" :label="`${impactScore}/100 impact points`" /></div>
                 <div class="text-body2" style="white-space: pre-wrap">{{ simulationResult }}</div>
               </div>
             </q-card>
@@ -272,6 +275,8 @@ const tab = ref('details');
 
 const simulationLoading = ref(false);
 const simulationResult = ref('');
+const delayDays = ref(7);
+const impactScore = ref(0);
 
 watch(
   () => props.modelValue,
@@ -392,9 +397,22 @@ const handleDelete = async () => {
 
 const runSimulation = () => {
   simulationLoading.value = true;
+  const task = taskStore.currentTask;
+  if (!task) return;
+  const progress = Math.min(100, Math.max(0, Number(task.progress) || 0));
+  const remainingEffort = Math.max(0, Number(task.expected_effort) || 0) * (1 - progress / 100);
+  const priorityPoints: Record<string, number> = { critical: 30, high: 22, medium: 12, low: 5 };
+  const priorityRisk = priorityPoints[task.priority] || 8;
+  const dependencyCount = Array.isArray(task.dependencies) ? task.dependencies.length : Number(task.dependency_count) || 0;
+  const assigneeCount = Array.isArray(task.assignees) ? task.assignees.length : 1;
+  const daysToDeadline = task.deadline ? Math.ceil((new Date(task.deadline).getTime() - Date.now()) / 86400000) : 30;
+  const deadlinePressure = daysToDeadline <= delayDays.value ? 20 : daysToDeadline <= delayDays.value + 7 ? 10 : 0;
+  impactScore.value = Math.min(100, Math.round(delayDays.value * 1.8 + remainingEffort * 0.7 + priorityRisk + dependencyCount * 8 + deadlinePressure + (progress < 25 ? 8 : 0)));
+  const projectedSlip = Math.max(1, Math.round(delayDays.value * (1 + impactScore.value / 250)));
+  const affectedTasks = dependencyCount + (impactScore.value >= 70 ? 2 : impactScore.value >= 40 ? 1 : 0);
+  const pointsAtRisk = Math.round(impactScore.value * 1.5 + remainingEffort * 2);
   setTimeout(() => {
-    simulationResult.value =
-      "If this task is delayed by 2 weeks:\n- The 'Shopping Cart' task will be blocked.\n- 'Sarah Johnson' will be underutilized for 14 hours.\n- The 'E-Commerce Platform' project end date will push out by 5 days.";
+    simulationResult.value = `A ${delayDays.value}-day delay produces a ${impactScore.value}/100 impact score.\n- Estimated project schedule slip: ${projectedSlip} day(s).\n- Estimated downstream tasks affected: ${affectedTasks}.\n- Remaining effort exposed: ${Math.round(remainingEffort * 10) / 10} hours across ${assigneeCount} assignee(s).\n- Delivery points at risk: ${pointsAtRisk}.\n\nRisk drivers: ${task.priority || 'medium'} priority, ${progress}% complete, ${dependencyCount} dependency/dependent task link(s), and ${daysToDeadline < 0 ? 'an overdue' : `${daysToDeadline}-day`} deadline window.`;
     simulationLoading.value = false;
   }, 1000);
 };

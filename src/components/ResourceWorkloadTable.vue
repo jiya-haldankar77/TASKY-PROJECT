@@ -60,7 +60,7 @@
         <q-td :props="props" style="width: 200px">
           <div class="row items-center no-wrap">
             <q-avatar size="32px" class="q-mr-sm">
-              <img :src="props.row.avatar || `https://i.pravatar.cc/150?img=${props.row.id}`" />
+              <img :src="props.row.avatar || props.row.avatar_url || `https://i.pravatar.cc/150?img=${props.row.user_id || props.row.id}`" />
             </q-avatar>
             <div class="column">
               <div class="text-weight-bold" style="font-size: 13px; color: #333">

@@ -7,7 +7,7 @@
 
     <!-- Daily Tracker Tasks -->
     <div class="row q-col-gutter-md q-mb-md">
-      <div v-for="task in dailyTasks" :key="task.id" class="col-12 col-sm-6 col-md-4">
+      <div v-for="task in paginatedDailyTasks" :key="task.id" class="col-12 col-sm-6 col-md-4">
         <q-card class="daily-task-card" flat bordered>
           <q-card-section>
             <div class="row items-center justify-between">
@@ -36,6 +36,10 @@
           </q-card-actions>
         </q-card>
       </div>
+    </div>
+    <div v-if="dailyTasks.length > rowsPerPage" class="row items-center justify-between q-mb-md">
+      <div class="text-caption text-grey-7">Showing {{ pageStart }}–{{ pageEnd }} of {{ dailyTasks.length }} daily tasks</div>
+      <q-pagination v-model="currentPage" :max="totalPages" color="primary" direction-links boundary-links />
     </div>
 
     <!-- Empty State -->
@@ -227,8 +231,14 @@ const newTask = ref({
 const statusOptions = ['not-started', 'in-progress', 'completed', 'on-hold'];
 
 const dailyTasks = ref<DailyTask[]>([]);
+const currentPage = ref(1);
+const rowsPerPage = ref(6);
 const loading = ref(false);
 const projects = ref<any[]>([]);
+const paginatedDailyTasks = computed(() => dailyTasks.value.slice((currentPage.value - 1) * rowsPerPage.value, currentPage.value * rowsPerPage.value));
+const totalPages = computed(() => Math.max(1, Math.ceil(dailyTasks.value.length / rowsPerPage.value)));
+const pageStart = computed(() => dailyTasks.value.length ? (currentPage.value - 1) * rowsPerPage.value + 1 : 0);
+const pageEnd = computed(() => Math.min(currentPage.value * rowsPerPage.value, dailyTasks.value.length));
 
 // Fetch projects for selection
 const fetchProjects = async () => {

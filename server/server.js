@@ -316,7 +316,7 @@ app.post('/api/auth/register/pm', async (req, res) => {
         if (roleRows.length === 0) {
           return res
             .status(400)
-            .json({ success: false, error: 'Manager role not found for this organization' });
+            .json({ success: false, error: 'Project Manager role not found for this organization' });
         }
         roleId = roleRows[0].id;
       } else {

@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="row items-center justify-between q-mb-md">
       <div class="column">
-        <div class="text-h5 text-weight-bold">Planner</div>
+        <div class="text-h5 text-weight-bold">Employee Planner</div>
         <div class="text-grey-7 text-caption">Your deadlines and work schedule</div>
       </div>
     </div>

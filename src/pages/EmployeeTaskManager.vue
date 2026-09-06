@@ -442,119 +442,173 @@
     <!-- ========================================================= -->
 
     <q-dialog v-model="showAddDialog">
-      <q-card class="task-dialog">
-        <q-card-section>
-          <div class="text-h6 text-weight-bold">Create New Task</div>
+      <q-card class="create-dialog-card">
+        <!-- DIALOG HEADER — matched to Project Manager -->
+        <q-card-section class="create-dialog-header row items-center q-pb-md">
+          <q-avatar
+            color="white"
+            text-color="indigo"
+            icon="add_task"
+            size="42px"
+            class="q-mr-md"
+          />
 
-          <div class="text-body2 text-grey-6 q-mt-xs">
-            Create a task and divide it into subtasks.
+          <div>
+            <div class="text-h6 text-weight-bold">Create New Task</div>
+
+            <div class="text-caption text-indigo-1">
+              Turn the next piece of work into a clear action
+            </div>
           </div>
+
+          <q-space />
+
+          <q-btn
+            icon="close"
+            flat
+            round
+            dense
+            color="white"
+            @click="showAddDialog = false"
+          />
         </q-card-section>
 
-        <q-separator />
+        <q-card-section class="q-pa-lg">
+          <q-form @submit.prevent="createTask" class="q-gutter-md">
+            <!-- PROJECT -->
 
-        <q-card-section class="q-gutter-md">
-          <!-- TASK NAME -->
+            <q-select
+              v-model="newTask.project"
+              :options="projectOptions.slice(1)"
+              label="Project *"
+              outlined
+              dense
+              :rules="[(val) => !!val || 'Project is required']"
+            />
 
-          <q-input v-model="newTask.name" outlined label="Task name" />
+            <!-- TASK NAME -->
 
-          <!-- DESCRIPTION -->
+            <q-input
+              v-model="newTask.name"
+              label="Task Title *"
+              outlined
+              dense
+              :rules="[(val) => !!val || 'Task title is required']"
+            />
 
-          <q-input
-            v-model="newTask.description"
-            outlined
-            type="textarea"
-            autogrow
-            label="Description"
-          />
+            <!-- DESCRIPTION -->
 
-          <!-- PROJECT -->
+            <q-input
+              v-model="newTask.description"
+              label="Description"
+              type="textarea"
+              outlined
+              dense
+              rows="3"
+            />
 
-          <q-select
-            v-model="newTask.project"
-            :options="projectOptions.slice(1)"
-            outlined
-            label="Project"
-          />
+            <!-- PRIORITY / DEADLINE -->
 
-          <!-- PRIORITY / DEADLINE -->
-
-          <div class="row q-col-md" style="gap: 10px">
-            <div class="col-6">
-              <q-select
-                v-model="newTask.priority"
-                :options="priorityOptions.slice(1)"
-                outlined
-                label="Priority"
-              />
-            </div>
-
-            <div class="col-5">
-              <q-input v-model="newTask.deadline" outlined type="date" label="Deadline" />
-            </div>
-          </div>
-
-          <!-- ================================================= -->
-          <!-- SUBTASKS -->
-          <!-- ================================================= -->
-
-          <div class="subtask-editor">
-            <div class="row items-center justify-between q-mb-sm">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Subtasks</div>
-
-                <div class="text-caption text-grey-6">Break the task into smaller steps.</div>
+            <div class="row q-col-md" style="gap: 10px">
+              <div class="col-12 col-sm-6">
+                <q-select
+                  v-model="newTask.priority"
+                  :options="priorityOptions.slice(1)"
+                  label="Priority"
+                  outlined
+                  dense
+                />
               </div>
 
+              <div class="col-12 col-sm-5">
+                <q-input
+                  v-model="newTask.deadline"
+                  label="Deadline"
+                  type="date"
+                  outlined
+                  dense
+                  stack-label
+                />
+              </div>
+            </div>
+
+            <!-- SUBTASKS -->
+
+            <div class="subtask-editor">
+              <div class="row items-center justify-between q-mb-sm">
+                <div>
+                  <div class="text-subtitle1 text-weight-bold">Subtasks</div>
+
+                  <div class="text-caption text-grey-6">
+                    Break the task into smaller steps.
+                  </div>
+                </div>
+
+                <q-btn
+                  flat
+                  no-caps
+                  color="primary"
+                  icon="add"
+                  label="Add Subtask"
+                  @click="addNewTaskSubtask"
+                />
+              </div>
+
+              <div v-if="newTask.subtasks.length === 0" class="empty-subtasks">
+                <q-icon name="playlist_add" size="30px" color="grey-5" />
+
+                <div class="text-caption text-grey-6 q-mt-xs">
+                  No subtasks added yet
+                </div>
+              </div>
+
+              <div
+                v-for="(subtask, index) in newTask.subtasks"
+                :key="subtask.id"
+                class="subtask-row"
+              >
+                <q-input
+                  v-model="subtask.title"
+                  outlined
+                  dense
+                  :placeholder="`Subtask ${index + 1}`"
+                  class="col"
+                />
+
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="delete_outline"
+                  color="negative"
+                  @click="removeNewTaskSubtask(index)"
+                />
+              </div>
+            </div>
+
+            <!-- ACTIONS -->
+
+            <div class="row justify-end q-mt-lg">
               <q-btn
+                label="Cancel"
+                color="grey"
                 flat
+                type="button"
+                @click="showAddDialog = false"
+                class="q-mr-sm"
+              />
+
+              <q-btn
+                unelevated
                 no-caps
                 color="primary"
                 icon="add"
-                label="Add Subtask"
-                @click="addNewTaskSubtask"
+                label="Create Task"
+                type="submit"
               />
             </div>
-
-            <div v-if="newTask.subtasks.length === 0" class="empty-subtasks">
-              <q-icon name="playlist_add" size="30px" color="grey-5" />
-
-              <div class="text-caption text-grey-6 q-mt-xs">No subtasks added yet</div>
-            </div>
-
-            <div v-for="(subtask, index) in newTask.subtasks" :key="subtask.id" class="subtask-row">
-              <q-input
-                v-model="subtask.title"
-                outlined
-                dense
-                :placeholder="`Subtask ${index + 1}`"
-                class="col"
-              />
-
-              <q-btn
-                flat
-                round
-                dense
-                icon="delete_outline"
-                color="negative"
-                @click="removeNewTaskSubtask(index)"
-              />
-            </div>
-          </div>
+          </q-form>
         </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps label="Cancel" @click="showAddDialog = false" />
-
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            icon="add"
-            label="Create Task"
-            @click="createTask"
-          />
-        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -2283,10 +2337,17 @@ function isOverdue(task: Task) {
   max-width: none;
 }
 
-.task-dialog {
-  width: 620px;
-  max-width: 95vw;
-  border-radius: var(--radius-lg);
+/* Create Task dialog — visually matched to the Project Manager dialog */
+.create-dialog-card {
+  width: 540px;
+  max-width: 90vw;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.create-dialog-header {
+  color: white;
+  background: linear-gradient(135deg, #3949ab, #5c6bc0);
 }
 
 .subtask-editor {
