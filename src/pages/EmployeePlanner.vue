@@ -14,36 +14,12 @@
       <StreakCard :streak="streak" />
     </div>
 
-    <!-- =========================================================
-         VIEW TOGGLE
-    ========================================================= -->
-
-    <q-btn-toggle
-      v-model="activeView"
-      unelevated
-      toggle-color="primary"
-      color="white"
-      text-color="grey-7"
-      class="view-toggle q-mb-md"
-      :options="[
-        {
-          label: 'Calendar',
-          value: 'calendar',
-          icon: 'calendar_month',
-        },
-        {
-          label: 'Daily Log',
-          value: 'log',
-          icon: 'edit_note',
-        },
-      ]"
-    />
 
     <!-- =========================================================
          CALENDAR VIEW
     ========================================================= -->
 
-    <template v-if="activeView === 'calendar'">
+    <div class="calendar-container">
       <q-card flat bordered class="calendar-card">
         <!-- HEADER -->
         <CalendarToolbar
@@ -223,14 +199,23 @@
                 </div>
               </div>
 
+              <div v-if="selectedDayCompliance?.status === 'submitted'" class="text-positive text-weight-bold flex items-center justify-center q-gutter-x-sm q-mt-md">
+                <q-icon name="check_circle" size="sm" /> <span>Submitted for Review</span>
+              </div>
+              <div v-else-if="selectedDayCompliance?.status === 'reviewed'" class="text-primary text-weight-bold flex items-center justify-center q-mt-md">
+                <div class="flex items-center q-gutter-x-sm">
+                  <q-icon name="verified" size="sm" /> <span>Reviewed by PM</span>
+                </div>
+              </div>
               <q-btn
+                v-else
                 unelevated
                 dense
                 no-caps
                 color="primary"
                 class="full-width q-mt-md"
                 label="Save Day Status"
-                @click="saveDayStatus"
+                @click="submitDayToPM"
               />
             </div>
           </q-card>
@@ -260,20 +245,24 @@
               <div v-if="selectedDayActivity.length" class="compact-activity-list q-mt-sm">
                 <div v-for="log in selectedDayActivity" :key="log.id" class="compact-activity-row">
                   <div class="activity-task-icon">
-                    <q-icon name="task_alt" size="15px" />
+                    <q-icon :name="log.taskTitle === 'Manual Entry' ? 'edit_note' : 'task_alt'" size="15px" />
                   </div>
 
                   <div class="col">
                     <div class="compact-task-name">
-                      {{ log.taskTitle }}
+                      {{ log.taskTitle || 'Manual Entry' }}
                     </div>
 
-                    <div class="text-caption text-grey-6">
+                    <div v-if="log.project" class="text-caption text-grey-6">
                       {{ log.project }}
+                    </div>
+
+                    <div v-if="log.note" class="text-caption text-grey-5 q-mt-xs log-note-text">
+                      {{ log.note }}
                     </div>
                   </div>
 
-                  <div class="compact-progress">
+                  <div v-if="log.progress > 0" class="compact-progress">
                     <div class="text-caption">{{ log.progress }}%</div>
 
                     <q-linear-progress
@@ -301,239 +290,13 @@
                   @click="openAddWorkDialog"
                 />
               </div>
-            </div>
+
+                <!-- Submit to PM moved to Save Day Status above -->
+              </div>
           </q-card>
         </div>
       </div>
-    </template>
-
-    <!-- =========================================================
-         DAILY LOG
-    ========================================================= -->
-
-    <template v-else>
-      <q-card flat bordered class="planner-card q-pa-md">
-        <div class="row items-center justify-between">
-          <div>
-            <div class="section-kicker">DAILY WORK LOG</div>
-
-            <div class="selected-date">
-              {{ selectedDateFormatted }}
-            </div>
-
-            <div class="text-caption text-grey-6">
-              Update today's work or recover missed updates from the previous 7 days.
-            </div>
-          </div>
-
-          <div class="row items-center q-gutter-xs">
-            <q-btn flat round dense icon="chevron_left" @click="previousLogDate" />
-
-            <q-btn outline dense no-caps color="primary" label="Today" @click="goToday" />
-
-            <q-btn
-              flat
-              round
-              dense
-              icon="chevron_right"
-              :disable="isTodaySelected"
-              @click="nextLogDate"
-            />
-          </div>
-        </div>
-
-        <!-- DATE STRIP -->
-
-        <div class="date-strip q-mt-md">
-          <div
-            v-for="date in availableLogDates"
-            :key="date"
-            class="date-chip"
-            :class="{
-              'date-chip-active': selectedDate === date,
-            }"
-            @click="selectLogDate(date)"
-          >
-            <div class="text-caption">
-              {{ getShortDay(date) }}
-            </div>
-
-            <div class="date-chip-number">
-              {{ getShortDate(date) }}
-            </div>
-
-            <q-icon v-if="hasUpdated(date)" name="check_circle" size="13px" />
-          </div>
-        </div>
-      </q-card>
-
-      <!-- REMINDER -->
-
-      <q-banner v-if="showReminder" rounded class="reminder-banner q-mt-md">
-        <template #avatar>
-          <q-icon name="notifications_active" color="orange" size="22px" />
-        </template>
-
-        <div>
-          <div class="text-weight-bold">Work update missing</div>
-
-          <div class="text-caption">
-            This day is marked as working, but no work has been recorded.
-          </div>
-        </div>
-      </q-banner>
-
-      <!-- ACTIVE TASKS -->
-
-      <div class="row items-center justify-between q-mt-lg">
-        <div>
-          <div class="section-title">ACTIVE TASKS</div>
-
-          <div class="text-caption text-grey-6">Tasks that need an update.</div>
-        </div>
-
-        <!-- IMPORTANT:
-             For previous dates this allows
-             adding work manually.
-        -->
-
-        <q-btn
-          v-if="!isTodaySelected"
-          unelevated
-          dense
-          no-caps
-          color="primary"
-          icon="add"
-          label="Add Work Entry"
-          @click="openAddWorkDialog"
-        />
-      </div>
-
-      <!-- TASKS -->
-
-      <div v-if="activeTasks.length" class="q-mt-sm">
-        <q-card
-          v-for="task in activeTasks"
-          :key="task.id"
-          flat
-          bordered
-          class="compact-task-card q-mb-sm"
-        >
-          <div class="q-pa-md">
-            <div class="row items-center">
-              <div class="task-title">
-                {{ task.title }}
-              </div>
-
-              <q-badge
-                class="q-ml-sm"
-                :color="priorityColor(task.priority)"
-                :label="task.priority"
-              />
-
-              <q-space />
-
-              <q-badge outline color="primary" :label="task.status" />
-            </div>
-
-            <div class="text-caption text-grey-6">
-              {{ task.project }}
-            </div>
-
-            <div class="row q-col-gutter-md q-mt-sm">
-              <!-- STATUS -->
-
-              <div class="col-12 col-md-3">
-                <q-select
-                  v-model="task.status"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                  :options="taskStatusOptions"
-                  option-label="label"
-                  option-value="value"
-                  label="Status"
-                />
-              </div>
-
-              <!-- PROGRESS -->
-
-              <div class="col-12 col-md-5">
-                <div class="progress-label">
-                  <span> Progress </span>
-
-                  <span> {{ task.progress }}% </span>
-                </div>
-
-                <q-slider
-                  v-model="task.progress"
-                  :min="0"
-                  :max="100"
-                  :step="5"
-                  color="primary"
-                  dense
-                />
-              </div>
-
-              <!-- NOTE -->
-
-              <div class="col-12 col-md-4">
-                <q-input v-model="task.note" outlined dense placeholder="Short work note..." />
-              </div>
-            </div>
-
-            <!-- SUBTASKS -->
-
-            <div class="compact-subtasks q-mt-sm">
-              <div v-for="subtask in task.subtasks" :key="subtask.id" class="compact-subtask">
-                <q-checkbox
-                  :model-value="Boolean(subtask.completed)"
-                  @update:model-value="(val) => toggleSubtask(subtask, val)"
-                  dense
-                  color="primary"
-                  :label="subtask.title"
-                />
-              </div>
-            </div>
-          </div>
-        </q-card>
-      </div>
-
-      <!-- EMPTY -->
-
-      <q-card v-else flat bordered class="empty-card q-mt-sm">
-        <q-icon name="task_alt" size="32px" color="primary" />
-
-        <div class="text-weight-bold q-mt-sm">No work entries yet</div>
-
-        <div class="text-caption text-grey-6">Add work that you completed on this day.</div>
-
-        <q-btn
-          unelevated
-          dense
-          no-caps
-          color="primary"
-          icon="add"
-          label="Add Work Entry"
-          class="q-mt-md"
-          @click="openAddWorkDialog"
-        />
-      </q-card>
-
-      <!-- SAVE -->
-
-      <div v-if="activeTasks.length" class="row justify-end q-mt-md">
-        <q-btn
-          unelevated
-          no-caps
-          color="primary"
-          icon="save"
-          label="Save Updates"
-          @click="saveAllUpdates"
-        />
-      </div>
-    </template>
+    </div>
 
     <!-- =========================================================
          ADD WORK DIALOG
@@ -558,65 +321,13 @@
         <q-separator />
 
         <q-card-section>
-          <q-input v-model="newWorkEntry.title" outlined dense label="Task title" />
-
-          <q-input v-model="newWorkEntry.project" outlined dense label="Project" class="q-mt-sm" />
-
-          <div class="row q-col-gutter-sm q-mt-xs">
-            <div class="col-6">
-              <q-select
-                v-model="newWorkEntry.status"
-                outlined
-                dense
-                label="Status"
-                :options="taskStatusOptions"
-                emit-value
-                map-options
-                option-label="label"
-                option-value="value"
-              />
-            </div>
-
-            <div class="col-6">
-              <q-select
-                v-model="newWorkEntry.priority"
-                outlined
-                dense
-                label="Priority"
-                :options="priorityOptions"
-              />
-            </div>
-          </div>
-
-          <div class="q-mt-sm">
-            <div class="field-label">Progress: {{ newWorkEntry.progress }}%</div>
-
-            <q-slider
-              v-model="newWorkEntry.progress"
-              :min="0"
-              :max="100"
-              :step="5"
-              color="primary"
-              dense
-            />
-          </div>
-
           <q-input
             v-model="newWorkEntry.note"
             outlined
             dense
             type="textarea"
             autogrow
-            label="Work done"
-            class="q-mt-sm"
-          />
-
-          <q-input
-            v-model.number="newWorkEntry.hours"
-            outlined
-            dense
-            type="number"
-            label="Hours worked"
+            label="Note / Comment"
             class="q-mt-sm"
           />
         </q-card-section>
@@ -629,7 +340,7 @@
             no-caps
             color="primary"
             label="Add Work Entry"
-            :disable="!newWorkEntry.title?.trim()"
+            :disable="!newWorkEntry.note?.trim()"
             @click="addWorkEntry"
           />
         </q-card-actions>
@@ -732,27 +443,6 @@ const monthNames = [
   'December',
 ];
 
-const taskStatusOptions = [
-  {
-    label: 'Pending',
-    value: 'Pending',
-  },
-  {
-    label: 'In Progress',
-    value: 'In Progress',
-  },
-  {
-    label: 'Completed',
-    value: 'Completed',
-  },
-  {
-    label: 'Blocked',
-    value: 'Blocked',
-  },
-];
-
-const priorityOptions = ['Low', 'Medium', 'High'];
-
 const dayStatusOptions = [
   {
     label: 'Worked',
@@ -784,11 +474,6 @@ const today = new Date();
 
 const todayString = formatDate(today);
 
-/* ============================================================
-   VIEW
-============================================================ */
-
-const activeView = ref<'calendar' | 'log'>('calendar');
 
 /* ============================================================
    CALENDAR MONTH
@@ -841,11 +526,11 @@ const dayStatuses = ref<Record<string, DayStatus>>({});
 
 const tasks = ref<Task[]>([]);
 
-const { user } = useAuthStore();
+const authStore = useAuthStore();
 
 // Fetch tasks from database
 const fetchTasks = async () => {
-  if (!user?.id) {
+  if (!authStore.user?.id) {
     // Fallback to mock data if no user
     tasks.value = [
       {
@@ -873,14 +558,18 @@ const fetchTasks = async () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:3001/api/tasks/employee/${user.id}`);
+    const response = await fetch(`http://localhost:3001/api/tasks/employee/${authStore.user?.id}`, {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    });
     const result = await response.json();
 
     if (result.success && result.tasks) {
       // Fetch subtasks for each task
       const tasksWithSubtasks = await Promise.all(
         result.tasks.map(async (task: any) => {
-          const subtaskResponse = await fetch(`http://localhost:3001/api/employee/tasks/${task.id}/subtasks`);
+          const subtaskResponse = await fetch(`http://localhost:3001/api/employee/tasks/${task.id}/subtasks`, {
+            headers: { Authorization: `Bearer ${authStore.token}` }
+          });
           const subtaskResult = await subtaskResponse.json();
           const subtasks = subtaskResult.success ? subtaskResult.subtasks : [];
 
@@ -933,7 +622,7 @@ const fetchTasks = async () => {
 
 // Fetch work logs from database
 const fetchWorkLogs = async () => {
-  if (!user?.id) {
+  if (!authStore.user?.id) {
     // Fallback to empty object if no user
     workLogs.value = {};
     return;
@@ -941,7 +630,9 @@ const fetchWorkLogs = async () => {
 
   try {
     const response = await fetch(
-      `http://localhost:3001/api/employee/work-logs/${user.id}/calendar`,
+      `http://localhost:3001/api/employee/work-logs/${authStore.user?.id}`, {
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      }
     );
     const result = await response.json();
 
@@ -949,17 +640,22 @@ const fetchWorkLogs = async () => {
       // Group work logs by date
       const logsByDate: Record<string, WorkLog[]> = {};
       result.logs.forEach((log: any) => {
-        const date = log.log_date;
+        let date = log.log_date;
+          if (date) {
+            const d = new Date(date);
+            date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          }
+        
         if (!logsByDate[date]) {
           logsByDate[date] = [];
         }
-        logsByDate[date].push({
+        logsByDate[date]!.push({
           id: log.id,
-          taskTitle: log.task_title || log.task_title,
+          taskTitle: log.task_title || (log.task_id == 0 || !log.task_id ? 'Manual Entry' : 'Unknown Task'),
           project: log.project_name || log.project || '',
-          progress: parseFloat(log.progress) || 0,
+          progress: parseFloat(log.task_progress ?? log.progress) || 0,
           hours: parseFloat(log.hours_spent) || 0,
-          note: log.notes || '',
+          note: log.work_completed || log.notes || '',
         });
       });
       workLogs.value = logsByDate;
@@ -1097,12 +793,56 @@ const calendarDays = computed<CalendarDay[]>(() => {
 });
 
 /* ============================================================
-   SELECTED ACTIVITY
+   SELECTED ACTIVITY & COMPLIANCE
 ============================================================ */
 
 const selectedDayActivity = computed(() => {
   return workLogs.value[selectedDate.value] ?? [];
 });
+
+const selectedDayCompliance = ref<any>(null);
+
+async function fetchDayCompliance(date: string) {
+  if (!authStore.user?.id) return;
+  try {
+    const response = await fetch(`http://localhost:3001/api/daily-logs/${authStore.user?.id}/${date}`, {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    });
+    const result = await response.json();
+    if (result.success) {
+      selectedDayCompliance.value = result.compliance;
+    }
+  } catch (err) {
+    console.error('Error fetching compliance:', err);
+  }
+}
+
+watch(selectedDate, (newDate) => {
+  fetchDayCompliance(newDate);
+}, { immediate: true });
+
+async function submitDayToPM() {
+  if (!authStore.user?.id) return;
+  // First save the local day status selection (worked, leave, holiday, weekend)
+  dayStatuses.value[selectedDate.value] = selectedDayStatus.value;
+  
+  try {
+    const response = await fetch('http://localhost:3001/api/daily-logs/submit', {
+      method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`
+        },
+      body: JSON.stringify({ user_id: authStore.user?.id, log_date: selectedDate.value })
+    });
+    const result = await response.json();
+    if (result.success) {
+      await fetchDayCompliance(selectedDate.value);
+    }
+  } catch (err) {
+    console.error('Error submitting day:', err);
+  }
+}
 
 /* ============================================================
    SELECTED DATE FORMATTED
@@ -1119,18 +859,6 @@ const selectedDateFormatted = computed(() => {
   });
 });
 
-/* ============================================================
-   ACTIVE TASKS
-============================================================ */
-
-const activeTasks = computed(() => {
-  /*
-          For the daily log we show only
-          tasks that are not completed.
-        */
-
-  return tasks.value.filter((task) => task.status !== 'Completed');
-});
 
 /* ============================================================
    MONTHLY STATS
@@ -1185,45 +913,7 @@ watch(
   },
 );
 
-/* ============================================================
-   LOG DATE RANGE
-============================================================ */
 
-const availableLogDates = computed(() => {
-  const dates: string[] = [];
-
-  const selected = parseDate(selectedDate.value);
-
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(selected);
-
-    date.setDate(selected.getDate() - i);
-
-    dates.push(formatDate(date));
-  }
-
-  return dates;
-});
-
-/* ============================================================
-   TODAY SELECTED
-============================================================ */
-
-const isTodaySelected = computed(() => {
-  return selectedDate.value === todayString;
-});
-
-/* ============================================================
-   REMINDER
-============================================================ */
-
-const showReminder = computed(() => {
-  const status = dayStatuses.value[selectedDate.value] ?? selectedDayStatusComputed.value;
-
-  const logs = workLogs.value[selectedDate.value] ?? [];
-
-  return status === 'worked' && logs.length === 0;
-});
 
 /* ============================================================
    FORMAT DATE
@@ -1293,14 +983,6 @@ function selectCalendarDay(day: CalendarDay) {
   selectedDate.value = day.date;
 
   selectedDayStatus.value = day.status;
-}
-
-/* ============================================================
-   SAVE DAY STATUS
-============================================================ */
-
-function saveDayStatus() {
-  dayStatuses.value[selectedDate.value] = selectedDayStatus.value;
 }
 
 /* ============================================================
@@ -1394,7 +1076,7 @@ function openAddWorkDialog() {
 async function addWorkEntry() {
   const date = selectedDate.value;
 
-  if (!user?.id) return;
+  if (!authStore.user?.id) return;
 
   try {
     const parsedDate = parseDate(date);
@@ -1404,18 +1086,19 @@ async function addWorkEntry() {
     const day = String(parsedDate.getDate()).padStart(2, '0');
     const isoDate = `${year}-${month}-${day}`;
 
-    // Create new daily tracker entry
-    const response = await fetch('http://localhost:3001/api/employee/daily-tracker', {
+    // Create new daily work log entry
+    const response = await fetch('http://localhost:3001/api/daily-logs/work-log', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`
+      },
       body: JSON.stringify({
-        employee_id: user.id,
-        title: newWorkEntry.value.title || newWorkEntry.value.taskTitle,
-        description: newWorkEntry.value.note,
-        date: isoDate,
-        progress: newWorkEntry.value.progress,
-        status: newWorkEntry.value.status.toLowerCase().replace(' ', '-'),
-        project_name: newWorkEntry.value.project,
+        user_id: authStore.user?.id,
+        log_date: isoDate,
+        work_completed: newWorkEntry.value.note || 'Manual activity log',
+        hours_spent: 0,
+        status: 'in-progress',
       }),
     });
 
@@ -1447,150 +1130,8 @@ async function addWorkEntry() {
   }
 }
 
-/* ============================================================
-   DATE LOG NAVIGATION
-============================================================ */
 
-function selectLogDate(date: string) {
-  selectedDate.value = date;
-}
 
-function previousLogDate() {
-  const date = parseDate(selectedDate.value);
-
-  date.setDate(date.getDate() - 1);
-
-  selectedDate.value = formatDate(date);
-}
-
-function nextLogDate() {
-  if (isTodaySelected.value) {
-    return;
-  }
-
-  const date = parseDate(selectedDate.value);
-
-  date.setDate(date.getDate() + 1);
-
-  const next = formatDate(date);
-
-  /*
-      Don't allow future dates.
-    */
-
-  if (next <= todayString) {
-    selectedDate.value = next;
-  }
-}
-
-function goToday() {
-  selectedDate.value = todayString;
-}
-
-/* ============================================================
-   DATE STRIP
-============================================================ */
-
-function getShortDay(dateString: string): string {
-  return parseDate(dateString)
-    .toLocaleDateString('en-IN', {
-      weekday: 'short',
-    })
-    .toUpperCase();
-}
-
-function getShortDate(dateString: string): string {
-  return parseDate(dateString).getDate().toString();
-}
-
-/* ============================================================
-   UPDATED CHECK
-============================================================ */
-
-function hasUpdated(date: string): boolean {
-  return (workLogs.value[date] ?? []).length > 0;
-}
-
-/* ============================================================
-   PRIORITY COLOR
-============================================================ */
-
-function priorityColor(priority: string): string {
-  switch (priority.toLowerCase()) {
-    case 'high':
-      return 'negative';
-
-    case 'medium':
-      return 'warning';
-
-    case 'low':
-      return 'positive';
-
-    default:
-      return 'primary';
-  }
-}
-
-/* ============================================================
-   SAVE ALL DAILY UPDATES
-============================================================ */
-
-async function toggleSubtask(subtask: any, completed: boolean) {
-  try {
-    const response = await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ completed }),
-    });
-
-    const data = await response.json();
-    if (data.success) {
-      // Update local state
-      subtask.completed = completed ? 1 : 0;
-      subtask.status = completed ? 'completed' : 'not-started';
-
-      // Update parent task progress if returned
-      if (data.task_progress !== undefined) {
-        const task = activeTasks.value.find((t: any) => t.id === subtask.task_id);
-        if (task) {
-          task.progress = data.task_progress;
-        }
-      }
-
-      console.log(`✅ Subtask ${subtask.id} updated: ${completed ? 'completed' : 'uncompleted'}`);
-      console.log(`Progress: ${data.completed_count}/${data.total_count} = ${data.task_progress}%`);
-    }
-  } catch (error) {
-    console.error('Error updating subtask:', error);
-  }
-}
-
-async function saveAllUpdates() {
-  if (!user?.id) return;
-
-  try {
-    const updatePromises = activeTasks.value.map((task) =>
-      fetch(`http://localhost:3001/api/employee/tasks/${task.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          progress: task.progress,
-          status: task.status.toLowerCase().replace(' ', '-'),
-          user_id: user.id,
-        }),
-      })
-    );
-
-    await Promise.all(updatePromises);
-    showSavedDialog.value = true;
-  } catch (error) {
-    console.error('Error saving updates:', error);
-  }
-}
 </script>
 
 <style scoped>
@@ -1937,13 +1478,13 @@ async function saveAllUpdates() {
 }
 
 .compact-activity-list {
-  max-height: 105px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
 .compact-activity-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid var(--color-border-light);
@@ -1967,6 +1508,15 @@ async function saveAllUpdates() {
 
 .compact-progress {
   width: 75px;
+  flex-shrink: 0;
+}
+
+.log-note-text {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
 }
 
 .compact-empty {

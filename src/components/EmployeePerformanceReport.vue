@@ -183,6 +183,29 @@
               <div v-else class="text-caption text-grey-6 q-pa-md text-center">No recent tasks</div>
             </q-card-section>
           </q-card>
+
+          <!-- Daily Work Logs -->
+          <q-card flat bordered class="bg-white">
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Daily Work Logs</div>
+              <q-list v-if="employeeWorkLogs.length > 0" separator dense>
+                <q-item v-for="log in employeeWorkLogs.slice(0, 5)" :key="log.id" class="q-py-sm column">
+                  <div class="row items-center justify-between full-width">
+                    <div class="text-weight-bold text-body2">{{ log.task_title }}</div>
+                    <div class="text-caption text-grey">{{ log.log_date }}</div>
+                  </div>
+                  <div class="text-caption q-mt-xs" style="white-space: pre-wrap">
+                    {{ log.work_completed }}
+                  </div>
+                  <div class="row items-center justify-between full-width q-mt-xs">
+                    <q-badge :color="log.status === 'completed' ? 'green' : (log.status === 'in-progress' ? 'blue' : 'orange')" :label="log.status" style="font-size: 9px" />
+                    <div class="text-caption text-grey">{{ log.hours_spent }}h logged</div>
+                  </div>
+                </q-item>
+              </q-list>
+              <div v-else class="text-caption text-grey-6 q-pa-md text-center">No work logs found</div>
+            </q-card-section>
+          </q-card>
         </div>
       </div>
     </q-card>
@@ -207,6 +230,7 @@ const emit = defineEmits(['update:modelValue']);
 
 const loading = ref(false);
 const performanceData = ref<any>({});
+const employeeWorkLogs = ref<any[]>([]);
 
 const meterChart = ref<HTMLElement>();
 const pieChart = ref<HTMLElement>();
@@ -268,6 +292,12 @@ async function loadPerformanceData() {
       performanceData.value = data.performance;
       await nextTick();
       renderCharts();
+    }
+
+    const logsResponse = await fetch(`http://localhost:3001/api/pm/employee-performance/${props.employee.id}/work-logs`);
+    const logsData = await logsResponse.json();
+    if (logsData.success) {
+      employeeWorkLogs.value = logsData.logs || [];
     }
   } catch (error) {
     console.error('Error loading performance data:', error);

@@ -17,6 +17,10 @@
         <div class="text-grey-7 text-caption">Overview of what needs your attention today</div>
       </div>
       <div class="row items-center q-gutter-sm">
+        <q-btn v-if="pendingDailyLogsCount > 0" color="positive" icon="assignment_turned_in" outline round @click="showDailyLogReview = true">
+          <q-badge color="red" floating>{{ pendingDailyLogsCount }}</q-badge>
+          <q-tooltip>Review Daily Logs</q-tooltip>
+        </q-btn>
         <q-btn v-if="pendingRescheduleCount > 0" color="orange" icon="event" outline round @click="showScheduleReview = true">
           <q-badge color="red" floating>{{ pendingRescheduleCount }}</q-badge>
           <q-tooltip>Pending Reschedule Reviews</q-tooltip>
@@ -1035,6 +1039,9 @@
     <!-- Employee Performance Dialog -->
     <EmployeePerformanceReport v-model="showPerformanceDialog" :employee="selectedEmployee" />
 
+    <!-- Daily Log Review Dialog -->
+    <DailyLogReviewDialog v-model="showDailyLogReview" @reviewed="fetchPendingDailyLogs" />
+
     <!-- Schedule Review Dialog -->
     <ScheduleReviewDialog 
       v-if="pendingScheduleEvent" 
@@ -1095,6 +1102,22 @@ import { useAuthStore } from '../stores/authStore';
 import { useDashboardStore } from '../stores/dashboardStore';
 import EmployeePerformanceReport from '../components/EmployeePerformanceReport.vue';
 import ScheduleReviewDialog from '../components/ScheduleReviewDialog.vue';
+import DailyLogReviewDialog from '../components/DailyLogReviewDialog.vue';
+
+const showDailyLogReview = ref(false);
+const pendingDailyLogsCount = ref(0);
+const fetchPendingDailyLogs = async () => {
+  try {
+    const response = await fetch('http://localhost:3001/api/daily-logs/pm/pending');
+    const result = await response.json();
+    if (result.success) {
+      pendingDailyLogsCount.value = result.pending.length;
+    }
+  } catch (err) {
+    console.error('Failed to fetch pending logs', err);
+  }
+};
+
 const authStore = useAuthStore();
 const { logout } = authStore;
 const dashboardStore = useDashboardStore();
@@ -1119,6 +1142,7 @@ onMounted(() => {
   console.log('Users loaded:', dashboardStore.users);
   // Pre-load completed reviews
   fetchCompletedReviews();
+  fetchPendingDailyLogs();
   fetchPendingReschedules();
 });
 

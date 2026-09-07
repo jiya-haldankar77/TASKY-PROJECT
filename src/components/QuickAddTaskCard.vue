@@ -5,8 +5,8 @@
         <q-icon name="add_task" size="25px" />
       </q-avatar>
       <div class="q-ml-md">
-        <div class="quick-add-title">Have something new to work on?</div>
-        <div class="quick-add-subtitle">Create a task and divide it into smaller subtasks.</div>
+        <div class="quick-add-title">Self-Assign Task</div>
+        <div class="quick-add-subtitle">Create and assign a new task to yourself to track your work.</div>
       </div>
       <q-space />
       <q-btn
@@ -14,8 +14,8 @@
         no-caps
         color="primary"
         text-color="white"
-        icon="add"
-        label="Create Task"
+        icon="person_add"
+        label="Self-Assign Task"
         class="q-px-lg"
         @click="$emit('create')"
       />

@@ -153,8 +153,13 @@
               {{ props.row.project }}
             </div>
 
-            <div class="text-caption text-grey-6">
-              {{ props.row.assignedBy }}
+            <div class="row items-center q-gutter-xs q-mt-xs">
+              <q-badge
+                :color="props.row.assignedBy === 'Self-Assigned' ? 'purple-1' : 'blue-1'"
+                :text-color="props.row.assignedBy === 'Self-Assigned' ? 'purple-9' : 'blue-9'"
+                :label="props.row.assignedBy"
+                class="text-weight-medium q-px-xs"
+              />
             </div>
           </q-td>
         </template>
@@ -350,12 +355,21 @@
 
             <!-- PROJECT -->
 
-            <div class="row items-center q-mt-lg">
-              <q-icon name="folder" color="grey-6" size="18px" />
+            <div class="row items-center justify-between q-mt-lg">
+              <div class="row items-center">
+                <q-icon name="folder" color="grey-6" size="18px" />
 
-              <span class="text-body2 q-ml-xs">
-                {{ task.project }}
-              </span>
+                <span class="text-body2 q-ml-xs">
+                  {{ task.project }}
+                </span>
+              </div>
+
+              <q-badge
+                :color="task.assignedBy === 'Self-Assigned' ? 'purple-1' : 'blue-1'"
+                :text-color="task.assignedBy === 'Self-Assigned' ? 'purple-9' : 'blue-9'"
+                :label="task.assignedBy"
+                class="text-weight-medium q-px-xs"
+              />
             </div>
 
             <!-- SUBTASK PROGRESS -->
@@ -725,8 +739,15 @@
             {{ selectedTask.name }}
           </div>
 
-          <div class="text-caption text-grey-6">
-            {{ selectedTask.project }}
+          <div class="text-caption text-grey-6 row items-center q-gutter-xs q-mt-xs">
+            <span>{{ selectedTask.project }}</span>
+            <span>•</span>
+            <q-badge
+              :color="selectedTask.assignedBy === 'Self-Assigned' ? 'purple-1' : 'blue-1'"
+              :text-color="selectedTask.assignedBy === 'Self-Assigned' ? 'purple-9' : 'blue-9'"
+              :label="selectedTask.assignedBy"
+              class="text-weight-medium q-px-xs"
+            />
           </div>
         </div>
 
@@ -810,6 +831,7 @@
               <q-checkbox
                 v-model="subtask.completed"
                 color="primary"
+                :disable="subtask.originally_completed"
                 @update:model-value="updateSubtaskCompletion(selectedTask, subtask)"
               />
 
@@ -833,6 +855,7 @@
                   outlined
                   class="q-mt-sm"
                   style="max-width: 180px"
+                  :disable="subtask.originally_completed"
                   @update:model-value="updateSubtaskStatus(selectedTask, subtask)"
                 />
               </div>
@@ -1105,6 +1128,8 @@ interface Subtask {
   status: SubtaskStatus;
 
   estimated_hours?: number;
+
+  originally_completed?: boolean;
 }
 
 interface Task {
@@ -1209,7 +1234,7 @@ const submitComment = async () => {
   }
 };
 
-const { user } = useAuthStore();
+
 
 // Review dialog state
 const showReviewDialog = ref(false);
@@ -1223,7 +1248,7 @@ const fetchColleagues = async () => {
     const result = await response.json();
     if (result.success && result.users) {
       colleagues.value = result.users
-        .filter((u: any) => u.id !== user?.id) // Exclude current user
+        .filter((u: any) => u.id !== authStore.user?.id) // Exclude current user
         .map((u: any) => ({
           id: u.id,
           name: `${u.first_name} ${u.last_name}`,
@@ -1259,7 +1284,7 @@ const submitForReview = async () => {
       body: JSON.stringify({
         task_id: selectedTask.value.id,
         reviewer_id: selectedReviewer.value,
-        task_owner_id: user?.id,
+        task_owner_id: authStore.user?.id,
         completion_comment: 'Task completed, please review',
       }),
     });
@@ -1295,13 +1320,13 @@ const submitForReview = async () => {
 };
 
 const fetchTasks = async () => {
-  if (!user?.id) {
+    if (!authStore.user?.id) {
     console.error('No user ID found for fetching tasks');
     return;
   }
 
   try {
-    const response = await fetch(`http://localhost:3001/api/tasks/employee/${user.id}`);
+    const response = await fetch(`http://localhost:3001/api/tasks/employee/${authStore.user?.id}`);
     const result = await response.json();
 
     if (result.success && result.tasks) {
@@ -1320,8 +1345,16 @@ const fetchTasks = async () => {
                   completed: st.completed === 1,
                   status: st.status,
                   estimated_hours: st.estimated_hours || 0,
+                  originally_completed: st.completed === 1,
                 }))
               : [];
+
+            const isSelf = 
+              Boolean(task.is_self_assigned) || 
+              task.is_self_assigned === 1 || 
+              task.is_self_assigned === '1' ||
+              (authStore.user?.id != null && String(task.created_by) === String(authStore.user.id)) ||
+              (authStore.user?.id != null && String(task.assignment_assigned_by) === String(authStore.user.id));
 
             return {
               id: task.id,
@@ -1331,7 +1364,7 @@ const fetchTasks = async () => {
               priority: task.priority || 'medium',
               status: task.status || 'not-started',
               deadline: task.deadline || '',
-              assignedBy: task.is_self_assigned ? 'Self-Assigned' : 'Assigned by PM',
+              assignedBy: isSelf ? 'Self-Assigned' : 'Assigned by PM',
               todayNote: '',
               createdAt: task.created_at || '',
               subtasks: subtasks,
@@ -1339,6 +1372,13 @@ const fetchTasks = async () => {
             };
           } catch (error) {
             console.error('Error fetching subtasks for task:', task.id, error);
+            const isSelf = 
+              Boolean(task.is_self_assigned) || 
+              task.is_self_assigned === 1 || 
+              task.is_self_assigned === '1' ||
+              (authStore.user?.id != null && String(task.created_by) === String(authStore.user.id)) ||
+              (authStore.user?.id != null && String(task.assignment_assigned_by) === String(authStore.user.id));
+
             return {
               id: task.id,
               name: task.title,
@@ -1347,7 +1387,7 @@ const fetchTasks = async () => {
               priority: task.priority || 'medium',
               status: task.status || 'not-started',
               deadline: task.deadline || '',
-              assignedBy: task.is_self_assigned ? 'Self-Assigned' : 'Assigned by PM',
+              assignedBy: isSelf ? 'Self-Assigned' : 'Assigned by PM',
               todayNote: '',
               createdAt: task.created_at || '',
               subtasks: [],
@@ -1405,11 +1445,11 @@ watch(activeTab, (newTab) => {
 
 // Fetch user points and rank
 const fetchUserPointsAndRank = async () => {
-  if (!user?.id) return;
+  if (!authStore.user?.id) return;
 
   try {
     // Fetch user points
-    const userResponse = await fetch(`http://localhost:3001/api/users/${user.id}`);
+    const userResponse = await fetch(`http://localhost:3001/api/users/${authStore.user?.id}`);
     const userResult = await userResponse.json();
     if (userResult.success && userResult.user) {
       userPoints.value = userResult.user.points || 0;
@@ -1426,8 +1466,8 @@ const fetchUserPointsAndRank = async () => {
         'Sorted users:',
         sortedUsers.map((u: any) => ({ id: u.id, points: u.points })),
       );
-      const userRankIndex = sortedUsers.findIndex((u: any) => u.id === user.id);
-      console.log('User ID:', user.id, 'Rank index:', userRankIndex);
+      const userRankIndex = sortedUsers.findIndex((u: any) => u.id === authStore.user?.id);
+      console.log('User ID:', authStore.user?.id, 'Rank index:', userRankIndex);
       userRank.value = userRankIndex >= 0 ? userRankIndex + 1 : 1; // Default to rank 1 if not found
     }
   } catch (error) {
@@ -1488,13 +1528,16 @@ const insights = computed(() => {
 });
 
 // Update task progress/status to backend
-const updateTaskProgress = async (taskId: number, progress: number, status: string) => {
+const updateTaskProgress = async (taskId: number, progress: number, status: string, todayNote?: string) => {
   try {
     console.log('Updating task:', taskId, 'progress:', progress, 'status:', status);
     const response = await fetch(`http://localhost:3001/api/employee/tasks/${taskId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ progress, status }),
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}` 
+      },
+      body: JSON.stringify({ progress, status, todayNote, user_id: authStore.user?.id }),
     });
     const result = await response.json();
     console.log('Update task result:', result);
@@ -1824,13 +1867,11 @@ function completedSubtasks(task: Task) {
 }
 
 function taskProgress(task: Task) {
-  // If task is completed, return 100% from database
-  if (task.status === 'completed') {
-    return 100;
-  }
-
   // If task has no subtasks, use database progress
   if (task.subtasks.length === 0) {
+    if (task.status === 'completed') {
+      return 100;
+    }
     return task.progress || 0;
   }
 
@@ -1865,81 +1906,21 @@ function recalculateTask(task: Task) {
 // SUBTASK COMPLETION
 // ============================================================
 
-async function updateSubtaskCompletion(task: Task, subtask: Subtask) {
+function updateSubtaskCompletion(task: Task, subtask: Subtask) {
   if (subtask.completed) {
     subtask.status = 'completed';
   } else {
     subtask.status = 'not-started';
   }
-
-  // Save subtask to database
-  try {
-    await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: subtask.title,
-        status: subtask.status,
-        completed: subtask.completed,
-      }),
-    });
-  } catch (error) {
-    console.error('Error updating subtask:', error);
-  }
-
-  recalculateTask(task);
-
-  // Save task progress to database
-  const progress = taskProgress(task);
-  updateTaskProgress(task.id, progress, task.status);
 }
 
-async function updateSubtaskStatus(task: Task, subtask: Subtask) {
+function updateSubtaskStatus(task: Task, subtask: Subtask) {
   // Update completed based on status
   if (subtask.status === 'completed') {
     subtask.completed = true;
   } else {
     subtask.completed = false;
   }
-
-  // Save subtask to database
-  try {
-    const response = await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: subtask.title,
-        status: subtask.status,
-        completed: subtask.completed,
-      }),
-    });
-    const result = await response.json();
-    if (!result.success) {
-      console.error('Error updating subtask:', result.error);
-      $q.notify({
-        message: result.error || 'Update subtask failed',
-        color: 'negative',
-        icon: 'error',
-      });
-      // Revert the local changes
-      await fetchTasks();
-      return;
-    }
-  } catch (error) {
-    console.error('Error updating subtask:', error);
-    $q.notify({
-      message: 'Server error updating subtask',
-      color: 'negative',
-      icon: 'error',
-    });
-    return;
-  }
-
-  recalculateTask(task);
-
-  // Save task progress to database
-  const progress = taskProgress(task);
-  updateTaskProgress(task.id, progress, task.status);
 }
 
 // ============================================================
@@ -1965,7 +1946,7 @@ function handleTaskStatusChange(task: Task) {
 
   // Sync with backend
   const progress = taskProgress(task);
-  updateTaskProgress(task.id, progress, task.status);
+  updateTaskProgress(task.id, progress, task.status, task.todayNote);
 }
 
 // ============================================================
@@ -2030,11 +2011,13 @@ async function createTask() {
       project_id: newTask.value.project,
       priority: newTask.value.priority.toLowerCase(),
       deadline: newTask.value.deadline || new Date().toISOString().split('T')[0],
-      assignee_ids: authStore.user ? [authStore.user.id] : [],
+      user_id: authStore.user?.id ? Number(authStore.user.id) : undefined,
+      assignee_ids: authStore.user ? [Number(authStore.user.id)] : [],
+      is_self_assigned: 1,
       depends_on_ids: newTask.value.depends_on_ids,
     };
 
-    const response = await fetch('http://localhost:3001/api/pm/tasks', {
+    const response = await fetch('http://localhost:3001/api/employee/tasks', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2046,7 +2029,7 @@ async function createTask() {
     const result = await response.json();
     if (!result.success) throw new Error(result.error);
 
-    const taskId = result.task.id;
+    const taskId = result.taskId || result.task?.id;
 
     // Create subtasks
     const subtasks = newTask.value.subtasks
@@ -2122,37 +2105,58 @@ async function saveEditedSubtasks() {
   }
 
   try {
-    // Delete all existing subtasks for this task
-    for (const subtask of selectedTask.value.subtasks) {
+    const originalSubtasks = selectedTask.value.subtasks;
+    const newSubtaskIds = editSubtasks.value.map(s => s.id);
+
+    // Delete subtasks that were removed
+    const subtasksToDelete = originalSubtasks.filter(s => !newSubtaskIds.includes(s.id));
+    for (const subtask of subtasksToDelete) {
       await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
         method: 'DELETE',
       });
     }
 
-    // Create new subtasks
-    const newSubtasks = editSubtasks.value
-      .filter((subtask) => subtask.title.trim())
-      .map((subtask) => ({
-        ...subtask,
-        title: subtask.title.trim(),
-      }));
+    for (const subtask of editSubtasks.value) {
+      if (!subtask.title.trim()) continue;
 
-    for (const subtask of newSubtasks) {
-      await fetch(`http://localhost:3001/api/employee/tasks/${selectedTask.value.id}/subtasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          title: subtask.title,
-          estimated_hours: subtask.estimated_hours || 0
-        }),
-      });
+      if (originalSubtasks.find(s => s.id === subtask.id)) {
+        // Update existing subtask
+        await fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: subtask.title.trim(),
+            status: subtask.status,
+            completed: subtask.completed,
+            user_id: authStore.user?.id,
+          }),
+        });
+      } else {
+        // Create new subtask
+        const response = await fetch(`http://localhost:3001/api/employee/tasks/${selectedTask.value.id}/subtasks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            title: subtask.title.trim(),
+            estimated_hours: subtask.estimated_hours || 0
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to add subtask');
+        }
+      }
     }
 
     // Refresh tasks to get updated subtasks
     await fetchTasks();
-
-    selectedTask.value.subtasks = newSubtasks;
-    recalculateTask(selectedTask.value);
+    const updatedTask = tasks.value.find(t => t.id === selectedTask.value!.id);
+    if (updatedTask) {
+      selectedTask.value = updatedTask;
+      recalculateTask(selectedTask.value);
+      const progress = taskProgress(selectedTask.value);
+      await updateTaskProgress(selectedTask.value.id, progress, selectedTask.value.status);
+    }
 
     showEditDialog.value = false;
 
@@ -2161,10 +2165,10 @@ async function saveEditedSubtasks() {
       color: 'positive',
       icon: 'check_circle',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving subtasks:', error);
     $q.notify({
-      message: 'Error saving subtasks',
+      message: error.message || 'Error saving subtasks',
       color: 'negative',
       icon: 'error',
     });
@@ -2192,16 +2196,40 @@ function openEditFromManage() {
   openEditSubtasks(selectedTask.value);
 }
 
-function saveTaskUpdate() {
+async function saveTaskUpdate() {
   if (!selectedTask.value) {
     return;
   }
 
-  recalculateTask(selectedTask.value);
-
   // Save to database
+  try {
+    const promises = selectedTask.value.subtasks.map(subtask => 
+      fetch(`http://localhost:3001/api/employee/subtasks/${subtask.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: subtask.title,
+          status: subtask.status,
+          completed: subtask.completed,
+          user_id: authStore.user?.id,
+        }),
+      })
+    );
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Error saving subtasks:', error);
+  }
+
+  recalculateTask(selectedTask.value);
   const progress = taskProgress(selectedTask.value);
-  updateTaskProgress(selectedTask.value.id, progress, selectedTask.value.status);
+  await updateTaskProgress(selectedTask.value.id, progress, selectedTask.value.status, selectedTask.value.todayNote);
+
+  // Refresh tasks to get latest state including originally_completed
+  await fetchTasks();
+  if (selectedTask.value) {
+    const updatedTask = tasks.value.find(t => t.id === selectedTask.value!.id);
+    if (updatedTask) selectedTask.value = updatedTask;
+  }
 
   $q.notify({
     message: 'Task progress updated',

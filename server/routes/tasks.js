@@ -233,10 +233,11 @@ export default function taskRoutes(pool) {
 
       // Calculate per-person effort
       const assigneeCount = assignee_ids ? assignee_ids.length : 0;
+      const isSelfAssigned = req.body.is_self_assigned ? 1 : 0;
 
       const [result] = await pool.execute(
-        `INSERT INTO task (project_id, phase_id, created_by, title, description, priority, deadline, start_date, expected_effort, resources_needed, progress, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'not-started')`,
+        `INSERT INTO task (project_id, phase_id, created_by, title, description, priority, deadline, start_date, expected_effort, resources_needed, progress, status, is_self_assigned)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'not-started', ?)`,
         [
           project_id,
           phase_id || null,
@@ -248,6 +249,7 @@ export default function taskRoutes(pool) {
           start_date || null,
           expected_effort || 0,
           resources_needed || 1,
+          isSelfAssigned,
         ],
       );
 

@@ -217,7 +217,7 @@ interface DailyTask {
 
 const showAddDialog = ref(false);
 const editingTask = ref<DailyTask | null>(null);
-const { user } = useAuthStore();
+const authStore = useAuthStore();
 
 const newTask = ref({
   title: '',
@@ -260,16 +260,16 @@ const fetchProjects = async () => {
 // Fetch daily tracker entries from database
 const fetchDailyTasks = async () => {
   console.log('=== FETCH DAILY TASKS CALLED ===');
-  console.log('user:', user);
+  console.log('user:', authStore.user);
 
-  if (!user?.id) {
+  if (!authStore.user?.id) {
     console.log('❌ No user ID');
     return;
   }
 
   loading.value = true;
   try {
-    const response = await fetch(`http://localhost:3001/api/employee/daily-tracker/${user.id}`);
+    const response = await fetch(`http://localhost:3001/api/employee/daily-tracker/${authStore.user?.id}`);
     const result = await response.json();
 
     console.log('Fetch result:', result);
@@ -277,12 +277,12 @@ const fetchDailyTasks = async () => {
     if (result.success && result.entries) {
       dailyTasks.value = result.entries.map((entry: any) => ({
         id: entry.id,
-        title: entry.work_completed || 'Untitled',
-        description: entry.comments || '',
-        date: entry.log_date ? entry.log_date.split('T')[0] : new Date().toISOString().split('T')[0],
-        progress: parseFloat(entry.hours_spent) || 0,
+        title: entry.title || 'Untitled',
+        description: entry.description || '',
+        date: entry.date ? entry.date.split('T')[0] : new Date().toISOString().split('T')[0],
+        progress: parseFloat(entry.progress) || 0,
         status: entry.status || 'not-started',
-        project_name: entry.task_id ? `Task ${entry.task_id}` : '',
+        project_name: entry.project_id ? `Project ${entry.project_id}` : '',
       }));
       console.log('✅ Daily tasks loaded:', dailyTasks.value.length);
       console.log('Sample task:', dailyTasks.value[0]);
@@ -415,10 +415,10 @@ function editTask(task: DailyTask) {
 async function saveTask() {
   console.log('=== SAVE TASK CALLED ===');
   console.log('newTask.value:', newTask.value);
-  console.log('user:', user);
+  console.log('user:', authStore.user);
   console.log('editingTask.value:', editingTask.value);
 
-  if (!newTask.value.title || !newTask.value.date || !user?.id) {
+  if (!newTask.value.title || !newTask.value.date || !authStore.user?.id) {
     console.log('❌ Validation failed - missing required fields');
     return;
   }
@@ -456,7 +456,7 @@ async function saveTask() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employee_id: user.id,
+          employee_id: authStore.user?.id,
           title: newTask.value.title,
           description: newTask.value.description,
           date: newTask.value.date,

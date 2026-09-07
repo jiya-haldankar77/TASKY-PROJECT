@@ -2,7 +2,10 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h4 text-weight-bold">Daily Work Log</div>
-      <q-btn color="primary" icon="add" label="New Entry" @click="showCreateLogDialog = true" />
+      <div class="q-gutter-sm">
+        <q-btn color="primary" icon="add" label="New Entry" @click="showCreateLogDialog = true" />
+        <q-btn color="secondary" icon="check_circle" label="Finalize Day" @click="finalizeDay" />
+      </div>
     </div>
 
     <!-- Daily Update Pending Warning -->
@@ -312,7 +315,7 @@ async function submitWorkLog() {
   if (!newLog.value.taskId || !newLog.value.date || !authStore.user?.id) return;
 
   try {
-    const response = await fetch('http://localhost:3001/api/employee/work-logs', {
+    const response = await fetch('http://localhost:3001/api/employee/work-log', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -353,7 +356,7 @@ async function submitWorkLog() {
           body: JSON.stringify({
             progress: newProgress,
             status: newProgress === 100 ? 'completed' : task.status,
-            hours_spent: newLog.value.hoursSpent,
+            // hours_spent removed to prevent double-logging in daily_work_log
           }),
         });
       }
@@ -372,6 +375,27 @@ async function submitWorkLog() {
     }
   } catch (error) {
     console.error('Error submitting work log:', error);
+  }
+}
+
+async function finalizeDay() {
+  if (!authStore.user?.id) return;
+  try {
+    const response = await fetch('http://localhost:3001/api/employee/daily-logs/finalize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({ user_id: authStore.user.id }),
+    });
+    const data = await response.json();
+    if (data.success) {
+      if (analytics.value) analytics.value.dailyUpdatePending = false;
+      alert('Day finalized successfully!');
+    }
+  } catch (error) {
+    console.error('Error finalizing day:', error);
   }
 }
 </script>

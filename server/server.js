@@ -14,8 +14,10 @@ import notificationRoutes from './routes/notifications.js';
 import calendarRoutes from './routes/calendar.js';
 import schedulingRoutes from './routes/scheduling.js';
 import leavesRoutes from './routes/leaves.js';
+import dailyLogsRoutes from './routes/dailyLogs.js';
 import cron from 'node-cron';
 import { handleDelayDetection, checkTaskDependencies } from './services/schedulingEngine.js';
+import jwt from 'jsonwebtoken';
 const app = express();
 const port = 3001;
 
@@ -26,8 +28,18 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Mock user middleware for testing without auth - using PM who created projects
+// Auth token middleware (allows token if present, otherwise falls back to mock user)
 app.use((req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET || 'tasky_jwt_secret_key_2024');
+      return next();
+    } catch (e) {
+      // Invalid or expired token, fall back
+    }
+  }
   if (!req.user) {
     req.user = {
       id: 1, // PM user ID who created all projects
@@ -99,6 +111,36 @@ pool
     } catch (e) {
       // Ignore error if already exists
     }
+    try {
+      await connection.query(
+        'ALTER TABLE daily_work_log MODIFY COLUMN task_id int unsigned NULL'
+      );
+      console.log('Made daily_work_log.task_id nullable');
+    } catch (e) {
+      // Already nullable or other benign error
+    }
+
+    try {
+      await connection.query(
+        "ALTER TABLE daily_work_log MODIFY COLUMN status ENUM('completed','partially-completed','in-progress','blocked','in-review') NOT NULL DEFAULT 'in-progress'"
+      );
+      console.log('Updated daily_work_log status enum to include in-review');
+    } catch (e) {
+      // Already updated
+    }
+
+    try {
+      await connection.query(
+        'UPDATE task t JOIN task_assignment ta ON ta.task_id = t.id SET t.is_self_assigned = 1, t.created_by = ta.user_id WHERE t.id > 25 AND t.created_by = 1 AND ta.user_id != 1'
+      );
+      await connection.query(
+        'UPDATE task_assignment ta SET ta.assigned_by = ta.user_id WHERE ta.task_id > 25 AND ta.user_id != 1'
+      );
+      console.log('Updated existing self-assigned tasks');
+    } catch (e) {
+      console.error('Failed to update existing self-assigned tasks:', e.message);
+    }
+
     connection.release();
   })
   .catch((err) => {
@@ -693,7 +735,7 @@ app.get('/api/employee/tasks/:id/subtasks', async (req, res) => {
 app.put('/api/employee/subtasks/:id', async (req, res) => {
   try {
     const subtaskId = req.params.id;
-    const { completed } = req.body;
+    const { completed, user_id } = req.body;
 
     const connection = await pool.getConnection();
     try {
@@ -746,10 +788,21 @@ app.put('/api/employee/subtasks/:id', async (req, res) => {
 
         // Record progress update if changed
         if (progress !== previousProgress) {
-          const userId = req.user?.id || 1;
+          const userId = user_id || req.user?.id || 1;
           await connection.execute(
             'INSERT INTO progress_update (task_id, user_id, previous_progress, new_progress, notes) VALUES (?, ?, ?, ?, ?)',
             [taskId, userId, previousProgress, progress, 'Updated progress via subtask']
+          );
+
+          // Add automatic work log entry
+          await connection.execute(
+            `INSERT INTO daily_work_log (task_id, user_id, log_date, work_completed, hours_spent, status)
+             VALUES (?, ?, CURDATE(), ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             work_completed = CONCAT(work_completed, '\n', VALUES(work_completed)),
+             hours_spent = hours_spent + VALUES(hours_spent),
+             status = VALUES(status)`,
+            [taskId, userId, `Automatically updated task progress to ${progress}% via subtask completion.`, 0, 'in-progress']
           );
         }
 
@@ -781,6 +834,26 @@ app.post('/api/employee/tasks/:id/subtasks', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
+      // Check task status first
+      const [taskCheck] = await connection.execute('SELECT status FROM task WHERE id = ?', [taskId]);
+      if (taskCheck.length > 0) {
+        const taskStatus = taskCheck[0].status;
+        
+        // Block if fully reviewed
+        if (taskStatus === 'completed') {
+          const [reviewCheck] = await connection.execute('SELECT status FROM task_review WHERE task_id = ? ORDER BY submitted_at DESC LIMIT 1', [taskId]);
+          if (reviewCheck.length > 0 && reviewCheck[0].status === 'review-done') {
+            return res.status(403).json({ success: false, error: 'Cannot add subtasks to a reviewed task.' });
+          }
+        }
+        
+        // Revert if in review
+        if (taskStatus === 'in-review') {
+          await connection.execute('UPDATE task SET status = "in-progress" WHERE id = ?', [taskId]);
+          await connection.execute('DELETE FROM task_review WHERE task_id = ? AND status = "pending"', [taskId]);
+        }
+      }
+
       const [result] = await connection.execute(
         'INSERT INTO subtask (task_id, title, status, completed, progress, estimated_hours) VALUES (?, ?, ?, ?, ?, ?)',
         [taskId, title, 'not-started', 0, 0, hours]
@@ -892,7 +965,7 @@ app.get('/api/employee/daily-tracker/:userId', async (req, res) => {
     const connection = await pool.getConnection();
     try {
       const [entries] = await connection.execute(
-        'SELECT id, task_id, user_id, log_date, status, work_completed, comments, hours_spent, created_at, updated_at FROM daily_work_log WHERE user_id = ? ORDER BY log_date DESC',
+        'SELECT id, employee_id, title, description, date, progress, status, project_id, created_at, updated_at FROM daily_tracker WHERE employee_id = ? ORDER BY date DESC, created_at DESC',
         [userId]
       );
       res.json({ success: true, entries });
@@ -912,41 +985,12 @@ app.post('/api/employee/daily-tracker', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
-      // Get a valid task_id if not provided
-      let taskId = task_id;
-      if (!taskId) {
-        const [tasks] = await connection.execute(
-          'SELECT id FROM task WHERE created_by = ? LIMIT 1',
-          [employee_id]
-        );
-        taskId = tasks.length > 0 ? tasks[0].id : null;
-      }
+      let trackerStatus = status || 'not-started';
+      if (trackerStatus === 'pending') trackerStatus = 'not-started';
       
-      let taskStatus = status || 'not-started';
-      if (taskStatus === 'pending') taskStatus = 'not-started';
-      
-      let logStatus = taskStatus;
-      if (logStatus === 'not-started' || logStatus === 'pending') logStatus = 'in-progress';
-      else if (!['completed', 'partially-completed', 'in-progress', 'blocked'].includes(logStatus)) {
-        logStatus = 'in-progress';
-      }
-
-      // If still no task_id, create a dummy task first
-      if (!taskId) {
-        // Find a valid project_id to associate the task with
-        const [projects] = await connection.execute('SELECT id FROM project LIMIT 1');
-        const projectId = projects.length > 0 ? projects[0].id : 1;
-
-        const [dummyTask] = await connection.execute(
-          'INSERT INTO task (created_by, project_id, title, description, status, priority, progress, deadline, is_self_assigned) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), 1)',
-          [employee_id, projectId, title, description, taskStatus, 'medium', progress || 0]
-        );
-        taskId = dummyTask.insertId;
-      }
-
       const [result] = await connection.execute(
-        'INSERT INTO daily_work_log (user_id, task_id, work_completed, comments, log_date, hours_spent, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [employee_id, taskId, title, description, date, progress, logStatus]
+        'INSERT INTO daily_tracker (employee_id, title, description, date, progress, status, project_id) VALUES (?, ?, ?, ?, ?, ?, NULL)',
+        [employee_id, title, description, date, progress || 0, trackerStatus]
       );
       res.json({ success: true, id: result.insertId });
     } finally {
@@ -966,10 +1010,10 @@ app.put('/api/employee/daily-tracker/:id', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
-      // Don't update log_date to avoid unique constraint conflicts
+      // Don't update date to avoid conflicts, just update contents
       await connection.execute(
-        'UPDATE daily_work_log SET work_completed = ?, comments = ?, hours_spent = ?, status = ? WHERE id = ?',
-        [title, description, progress, status, id]
+        'UPDATE daily_tracker SET title = ?, description = ?, progress = ?, status = ? WHERE id = ?',
+        [title, description, progress || 0, status || 'not-started', id]
       );
       res.json({ success: true });
     } finally {
@@ -988,7 +1032,7 @@ app.delete('/api/employee/daily-tracker/:id', async (req, res) => {
 
     const connection = await pool.getConnection();
     try {
-      await connection.execute('DELETE FROM daily_work_log WHERE id = ?', [id]);
+      await connection.execute('DELETE FROM daily_tracker WHERE id = ?', [id]);
       res.json({ success: true });
     } finally {
       connection.release();
@@ -1250,11 +1294,37 @@ app.get('/api/pm/employee-performance/:userId', async (req, res) => {
   }
 });
 
-// PUT /api/employee/tasks/:id - Update task (Authentication removed for testing)
+// GET /api/pm/employee-performance/:userId/work-logs - Get work logs for a specific employee for PM
+app.get('/api/pm/employee-performance/:userId/work-logs', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const connection = await pool.getConnection();
+    try {
+      const [logs] = await connection.execute(
+        `SELECT dwl.*, t.title AS task_title, p.name AS project_name, p.color AS project_color
+         FROM daily_work_log dwl
+         JOIN task t ON t.id = dwl.task_id
+         JOIN project p ON p.id = t.project_id
+         WHERE dwl.user_id = ?
+         ORDER BY dwl.log_date DESC
+         LIMIT 50`,
+        [userId]
+      );
+      res.json({ success: true, logs });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Get employee work logs error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// PUT /api/employee/tasks/:id - Update task
 app.put('/api/employee/tasks/:id', async (req, res) => {
   try {
     const taskId = req.params.id;
-    const { progress, status, actual_effort, hours_spent } = req.body;
+    const { progress, status, actual_effort, hours_spent, todayNote } = req.body;
 
     const connection = await pool.getConnection();
     try {
@@ -1293,19 +1363,36 @@ app.put('/api/employee/tasks/:id', async (req, res) => {
         params
       );
 
-      // If hours_spent provided, log it
-      if (hours_spent && hours_spent > 0) {
-        const userId = req.body.user_id || 1; // Mock user ID for testing
-        
+      // Update project progress
+      await updateProjectProgress(connection, taskId);
+
+      // Log progress automatically — always log if progress/note/hours provided
+      if (progress !== undefined || (hours_spent && hours_spent > 0) || todayNote) {
+        // Use user_id from body (sent by frontend) — this is the actual employee's ID
+        const userId = req.body.user_id || req.user?.id || 1;
         let logStatus = status || 'in-progress';
         if (logStatus === 'not-started' || logStatus === 'pending') logStatus = 'in-progress';
-        else if (!['completed', 'partially-completed', 'in-progress', 'blocked'].includes(logStatus)) {
+        else if (!['completed', 'partially-completed', 'in-progress', 'blocked', 'in-review'].includes(logStatus)) {
           logStatus = 'in-progress';
         }
+
+        let logMsg = '';
+        if (todayNote) {
+          logMsg = todayNote;
+        } else if (progress !== undefined) {
+          logMsg = `Automated: Progress updated to ${progress}%`;
+        }
         
+        const hSpent = hours_spent || 0;
+
         await connection.execute(
-          `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) VALUES (?, ?, ?, ?, ?, CURDATE())`,
-          [userId, taskId, hours_spent, `Updated progress to ${progress}%`, logStatus]
+          `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) 
+           VALUES (?, ?, ?, ?, ?, CURDATE())
+           ON DUPLICATE KEY UPDATE
+             work_completed = IF(VALUES(work_completed) = '', work_completed, IF(work_completed IS NULL OR work_completed = '', VALUES(work_completed), CONCAT(work_completed, '\n', VALUES(work_completed)))),
+             hours_spent = hours_spent + VALUES(hours_spent),
+             status = VALUES(status)`,
+          [userId, taskId, hSpent, logMsg, logStatus]
         );
       }
 
@@ -1331,6 +1418,7 @@ app.get('/api/tasks/employee/:id', async (req, res) => {
       const [tasks] = await connection.execute(
         `
         SELECT t.*, p.name AS project_name, p.color AS project_color,
+          ta.assigned_by AS assignment_assigned_by,
           DATEDIFF(t.deadline, CURDATE()) AS days_until_deadline,
           CASE
             WHEN t.status = 'completed' THEN 'completed'
@@ -1372,7 +1460,7 @@ app.get('/api/tasks/employee/:id', async (req, res) => {
   }
 });
 
-// POST /api/pm/tasks/reassign - Reassign task from one employee to another
+
 app.post('/api/pm/tasks/reassign', async (req, res) => {
   try {
     const { taskId, fromUserId, toUserId } = req.body;
@@ -1408,10 +1496,11 @@ app.get('/api/employee/work-logs/:id', async (req, res) => {
     try {
       const [logs] = await connection.execute(
         `
-        SELECT dwl.*, t.title AS task_title, p.name AS project_name, p.color AS project_color
+        SELECT dwl.*, t.title AS task_title, t.progress AS task_progress,
+               p.name AS project_name, p.color AS project_color
         FROM daily_work_log dwl
-        JOIN task t ON t.id = dwl.task_id
-        JOIN project p ON p.id = t.project_id
+        LEFT JOIN task t ON t.id = dwl.task_id
+        LEFT JOIN project p ON p.id = t.project_id
         WHERE dwl.user_id = ?
         ORDER BY dwl.log_date DESC
         `,
@@ -1440,11 +1529,16 @@ app.post('/api/employee/work-log', async (req, res) => {
     const connection = await pool.getConnection();
     try {
       const [result] = await connection.execute(
-        `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) VALUES (?, ?, ?, ?, ?, CURDATE())`,
+        `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) 
+         VALUES (?, ?, ?, ?, ?, CURDATE())
+         ON DUPLICATE KEY UPDATE
+           work_completed = IF(VALUES(work_completed) = '', work_completed, IF(work_completed IS NULL OR work_completed = '', VALUES(work_completed), CONCAT(work_completed, '\n', VALUES(work_completed)))),
+           hours_spent = hours_spent + VALUES(hours_spent),
+           status = VALUES(status)`,
         [userId, task_id, hours_spent, work_completed || '', status || 'completed']
       );
 
-      res.json({ success: true, logId: result.insertId });
+      res.json({ success: true, logId: result.insertId || result.updateId });
     } finally {
       connection.release();
     }
@@ -1454,17 +1548,41 @@ app.post('/api/employee/work-log', async (req, res) => {
   }
 });
 
+// POST /api/employee/daily-logs/finalize - Finalize day's logs
+app.post('/api/employee/daily-logs/finalize', async (req, res) => {
+  try {
+    const userId = req.body.user_id || req.user?.id || 1;
+    const connection = await pool.getConnection();
+    try {
+      await connection.execute(
+        `INSERT INTO daily_log_compliance (user_id, log_date, status, submitted_at) 
+         VALUES (?, CURDATE(), 'logged', NOW())
+         ON DUPLICATE KEY UPDATE 
+           status = 'logged', 
+           submitted_at = NOW()`,
+        [userId]
+      );
+      res.json({ success: true });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Finalize daily logs error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // POST /api/employee/tasks - Create self-assigned task
 app.post('/api/employee/tasks', async (req, res) => {
   try {
     const { title, description, project_id, priority, deadline, expected_effort, user_id, depends_on_ids } = req.body;
-    const userId = user_id || 1; // Mock user ID for testing
+    const userId = user_id || req.user?.id || 1;
 
     const connection = await pool.getConnection();
     try {
       const [result] = await connection.execute(
         `INSERT INTO task (project_id, created_by, title, description, priority, deadline, expected_effort, status, is_self_assigned) VALUES (?, ?, ?, ?, ?, ?, ?, 'not-started', 1)`,
-        [project_id, userId, title, description, priority, deadline, expected_effort]
+        [project_id, userId, title, description, priority, deadline, expected_effort || 0]
       );
 
       // Auto-assign to the employee
@@ -1483,7 +1601,7 @@ app.post('/api/employee/tasks', async (req, res) => {
         }
       }
 
-      res.json({ success: true, taskId: result.insertId });
+      res.json({ success: true, taskId: result.insertId, task: { id: result.insertId } });
     } finally {
       connection.release();
     }
@@ -1493,45 +1611,7 @@ app.post('/api/employee/tasks', async (req, res) => {
   }
 });
 
-// PUT /api/employee/tasks/:id - Update task
-app.put('/api/employee/tasks/:id', async (req, res) => {
-  try {
-    const taskId = req.params.id;
-    const { progress, status, actual_effort, hours_spent } = req.body;
-
-    const connection = await pool.getConnection();
-    try {
-      // Dependency check
-      const depCheck = await checkTaskDependencies(pool, taskId);
-      if (depCheck.isBlocked) {
-        return res.status(400).json({ success: false, error: `Task is blocked by incomplete dependencies: ${depCheck.blockingTasks.join(', ')}` });
-      }
-
-      await connection.execute(
-        `UPDATE task SET progress = ?, status = ?, actual_effort = ? WHERE id = ?`,
-        [progress, status, actual_effort, taskId]
-      );
-      
-      await updateProjectProgress(connection, taskId);
-
-      // If hours_spent provided, log it
-      if (hours_spent && hours_spent > 0) {
-        const userId = req.body.user_id || 1; // Mock user ID for testing
-        await connection.execute(
-          `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) VALUES (?, ?, ?, ?, ?, CURDATE())`,
-          [userId, taskId, hours_spent, `Updated progress to ${progress}%`, status || 'in-progress']
-        );
-      }
-
-      res.json({ success: true });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    console.error('Update employee task error:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
+// (Duplicate PUT /api/employee/tasks/:id removed — handled above at line 1311)
 
 // POST /api/employee/tasks/:id/comment - Add comment to task
 app.post('/api/employee/tasks/:id/comment', async (req, res) => {
@@ -1587,6 +1667,17 @@ app.post('/api/employee/tasks/:id/submit-review', async (req, res) => {
         [taskId, task_owner_id, reviewer_id, completion_comment]
       );
 
+      // Add automatic work log entry
+      await connection.execute(
+        `INSERT INTO daily_work_log (task_id, user_id, log_date, work_completed, hours_spent, status)
+         VALUES (?, ?, CURDATE(), ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+         work_completed = CONCAT(work_completed, '\n', VALUES(work_completed)),
+         hours_spent = hours_spent + VALUES(hours_spent),
+         status = VALUES(status)`,
+        [taskId, task_owner_id, 'Submitted task for review.', 0, 'completed']
+      );
+
       res.json({ success: true });
     } finally {
       connection.release();
@@ -1627,6 +1718,18 @@ app.put('/api/employee/reviews/:id/complete', async (req, res) => {
       await connection.execute(
         `UPDATE task_review SET status = 'review-done', review_comment = ?, completed_at = NOW() WHERE task_id = ?`,
         [review_comment, taskId]
+      );
+
+      // Log automated review completion only for the reviewer
+      // (task owner already has a log entry from when they submitted the task for review)
+      const reviewerMsg = `Completed peer review for task ID: ${taskId}. Task marked as complete.`;
+      await connection.execute(
+        `INSERT INTO daily_work_log (user_id, task_id, hours_spent, work_completed, status, log_date) 
+         VALUES (?, ?, ?, ?, ?, CURDATE())
+         ON DUPLICATE KEY UPDATE
+           work_completed = IF(work_completed IS NULL OR work_completed = '', VALUES(work_completed), CONCAT(work_completed, '\n', VALUES(work_completed))),
+           status = VALUES(status)`,
+        [review.reviewer_id, taskId, 0, reviewerMsg, 'completed']
       );
 
       // Award points to reviewer (5 points)
@@ -1739,6 +1842,7 @@ app.use('/api/pm/notifications', notificationRoutes(pool));
 app.use('/api/pm/calendar', calendarRoutes(pool));
 app.use('/api/pm/schedule', schedulingRoutes(pool));
 app.use('/api/pm/leaves', leavesRoutes(pool));
+app.use('/api/daily-logs', dailyLogsRoutes);
 
 // Run delay detection every day at 8:00 AM
 cron.schedule('0 8 * * 1-5', async () => {

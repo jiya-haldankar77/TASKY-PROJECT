@@ -1108,11 +1108,11 @@ function formatDate(date: string) {
 
 async function createSelfAssignedTask() {
   try {
-    // Authentication removed for testing
     const response = await fetch('http://localhost:3001/api/employee/tasks', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
       },
       body: JSON.stringify({
         title: newTask.value.title,
@@ -1122,6 +1122,7 @@ async function createSelfAssignedTask() {
         expected_effort: newTask.value.expectedEffort,
         priority: newTask.value.priority,
         is_self_assigned: 1,
+        user_id: authStore.user?.id ? Number(authStore.user.id) : undefined,
       }),
     });
 
