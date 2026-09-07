@@ -13,6 +13,25 @@
         <div class="text-h5 text-weight-bold">Tasky</div>
       </div>
 
+      <div
+        class="q-mb-md q-pa-sm rounded-borders"
+        style="background-color: rgba(255, 255, 255, 0.05); border-radius: 12px"
+      >
+        <div class="row items-center">
+          <q-avatar size="40px">
+            <img :src="authStore.user?.avatar || 'https://i.pravatar.cc/150?img=1'" />
+          </q-avatar>
+          <div class="q-ml-sm">
+            <div class="text-subtitle2 text-weight-bold">
+              {{ authStore.user?.firstName }} {{ authStore.user?.surname }}
+            </div>
+            <div class="text-caption text-grey-6">
+              {{ authStore.user?.role === 'pm' ? 'Project Manager' : 'Employee' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Navigation -->
       <q-list class="q-gutter-y-sm" padding>
         <q-item
@@ -159,6 +178,9 @@ import { ref, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useAuthStore } from '../stores/authStore'
+
+const authStore = useAuthStore()
 
 const router = useRouter();
 const $q = useQuasar();

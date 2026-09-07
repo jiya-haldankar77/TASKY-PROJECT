@@ -21,14 +21,14 @@
                       />
                       <path
                         d="M7 8L10 12L7 16"
-                        stroke="#C4F64F"
+                        stroke="#C4F650"
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       />
                       <path
                         d="M13 16H17"
-                        stroke="#C4F64F"
+                        stroke="#C4F651"
                         stroke-width="2"
                         stroke-linecap="round"
                       />

@@ -1704,9 +1704,9 @@ const stats = computed(() => [
 
     icon: 'assignment',
 
-    color: 'var(--color-purple)',
+    color: '#7c3aed',
 
-    background: 'var(--color-purple-light)',
+    background: '#f3e8ff',
 
     trend: 'All tasks',
 
@@ -1722,7 +1722,7 @@ const stats = computed(() => [
 
     icon: 'pending_actions',
 
-    color: 'var(--color-blue)',
+    color: '#3b82f6',
 
     background: 'var(--color-blue-light)',
 
@@ -1740,9 +1740,9 @@ const stats = computed(() => [
 
     icon: 'check_circle',
 
-    color: 'var(--color-success)',
+    color: '#22c55e',
 
-    background: 'var(--color-success-light)',
+    background: '#ecfdf3',
 
     trend: 'Good progress',
 
@@ -1758,9 +1758,9 @@ const stats = computed(() => [
 
     icon: 'warning',
 
-    color: 'var(--color-danger)',
+    color: '#ef4444',
 
-    background: 'var(--color-danger-light)',
+    background: '#fef2f2',
 
     trend: 'Review',
 
@@ -2363,17 +2363,17 @@ function statusStyle(status: string) {
 function projectColor(project: string) {
   if (project === 'Mobile Banking') {
     return {
-      bg: 'var(--color-info-light)',
+      bg: '#eff6ff',
 
-      color: 'var(--color-blue)',
+      color: '#3b82f6',
     };
   }
 
   if (project === 'Website Redesign') {
     return {
-      bg: 'var(--color-purple-light)',
+      bg: '#f3e8ff',
 
-      color: 'var(--color-purple)',
+      color: '#7c3aed',
     };
   }
 
@@ -2465,7 +2465,7 @@ async function submitInterrupt() {
 <style scoped>
 .stat-card {
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: #ffffff;
   transition: all 0.2s ease;
 }
 
@@ -2482,7 +2482,7 @@ async function submitInterrupt() {
 .quick-add-card {
   border-radius: var(--radius-lg);
 
-  background: linear-gradient(110deg, var(--color-primary), var(--color-primary-light));
+  background: linear-gradient(110deg, #6c63ff, #eeecff);
 }
 
 .quick-add-icon {
@@ -2509,22 +2509,22 @@ async function submitInterrupt() {
 }
 
 .my-task-icon {
-  background: var(--color-purple-light);
-  color: var(--color-purple);
+  background: #f3e8ff;
+  color: #7c3aed;
 }
 
 .task-name {
   font-size: 16px;
   font-weight: 650;
   line-height: 1.3;
-  color: var(--color-text);
+  color: #111827;
 }
 
 .task-description {
   max-width: 330px;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #64748b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2532,7 +2532,7 @@ async function submitInterrupt() {
 
 .task-table :deep(th) {
   background: #fafbfc;
-  color: var(--color-text-secondary);
+  color: #64748b;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -2541,7 +2541,7 @@ async function submitInterrupt() {
 .task-table :deep(td) {
   padding-top: 16px;
   padding-bottom: 16px;
-  border-color: var(--color-border-light);
+  border-color: #edf0f5;
 }
 
 .task-table :deep(tbody tr) {
@@ -2555,7 +2555,7 @@ async function submitInterrupt() {
 .subtask-count {
   display: flex;
   align-items: center;
-  color: var(--color-text-secondary);
+  color: #64748b;
   font-size: 13px;
   font-weight: 600;
 }
@@ -2574,7 +2574,7 @@ async function submitInterrupt() {
   font-size: 18px;
   font-weight: 700;
   line-height: 1.3;
-  color: var(--color-text);
+  color: #111827;
 }
 
 .grid-description {
@@ -2597,7 +2597,7 @@ async function submitInterrupt() {
 
 .subtask-editor {
   padding: 16px;
-  border: 1px solid var(--color-border);
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-md);
   background: var(--color-surface-hover);
 }
@@ -2612,9 +2612,9 @@ async function submitInterrupt() {
 .empty-subtasks {
   padding: 25px;
   text-align: center;
-  border: 1px dashed var(--color-border);
+  border: 1px dashed #e5e7eb;
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: #ffffff;
 }
 
 .points-badge {
@@ -2641,42 +2641,42 @@ async function submitInterrupt() {
 }
 
 .manage-header {
-  background: var(--color-surface);
+  background: #ffffff;
 }
 
 .manage-task-title {
   font-size: 20px;
   font-weight: 700;
-  color: var(--color-text);
+  color: #111827;
 }
 
 .manage-progress-card {
   border-radius: var(--radius-lg);
-  background: var(--color-purple-light);
+  background: #f3e8ff;
 }
 
 .manage-subtask {
   padding: 14px;
   margin-bottom: 10px;
-  border: 1px solid var(--color-border-light);
+  border: 1px solid #edf0f5;
   border-radius: var(--radius-md);
   background: white;
   transition: all 0.15s ease;
 }
 
 .manage-subtask:hover {
-  border-color: var(--color-purple);
+  border-color: #7c3aed;
   box-shadow: var(--shadow-sm);
 }
 
 .manage-subtask-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text);
+  color: #111827;
 }
 
 .completed-subtask {
-  color: var(--color-text-muted);
+  color: #94a3b8;
   text-decoration: line-through;
 }
 
@@ -2685,17 +2685,17 @@ async function submitInterrupt() {
   align-items: center;
   padding: 13px;
   border-radius: var(--radius-md);
-  background: var(--color-info-light);
-  color: var(--color-blue);
+  background: #eff6ff;
+  color: #3b82f6;
 }
 
 .deadline-overdue {
-  background: var(--color-danger-light);
-  color: var(--color-danger);
+  background: #fef2f2;
+  color: #ef4444;
 }
 
 .manage-footer {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid #e5e7eb;
   background: white;
 }
 </style>

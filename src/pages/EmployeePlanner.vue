@@ -1066,7 +1066,7 @@ function totalHours(logs: WorkLog[]): string {
 <style scoped>
 .planner-page {
   min-height: 100vh;
-  background: var(--color-background);
+  background: #f7f8fc;
 }
 
 .planner-header {
@@ -1079,20 +1079,20 @@ function totalHours(logs: WorkLog[]): string {
   width: 46px;
   height: 46px;
   place-items: center;
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  border: 1px solid var(--color-border);
+  color: #6c63ff;
+  background: #eeecff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
 }
 
 .streak-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-md);
 }
 
 .view-toggle {
-  border: 1px solid var(--color-border);
+  border: 1px solid #e5e7eb;
   border-radius: var(--radius-md);
   overflow: hidden;
 }
@@ -1102,14 +1102,14 @@ function totalHours(logs: WorkLog[]): string {
 .compact-info-card,
 .compact-task-card,
 .empty-card {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: #ffffff;
+  border-color: #e5e7eb;
   border-radius: var(--radius-lg);
 }
 
 .calendar-toolbar {
   min-height: 52px;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid #edf0f5;
 }
 
 .calendar-kicker,
@@ -1118,7 +1118,7 @@ function totalHours(logs: WorkLog[]): string {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.09em;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 .calendar-month {
@@ -1149,18 +1149,18 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .worked-stat {
-  color: var(--color-success);
-  background: var(--color-success-light);
+  color: #22c55e;
+  background: #ecfdf3;
 }
 
 .activity-stat {
-  color: var(--color-purple);
-  background: var(--color-purple-light);
+  color: #7c3aed;
+  background: #f3e8ff;
 }
 
 .hours-stat {
-  color: var(--color-blue);
-  background: var(--color-info-light);
+  color: #3b82f6;
+  background: #eff6ff;
 }
 
 .stat-value {
@@ -1170,7 +1170,7 @@ function totalHours(logs: WorkLog[]): string {
 
 .stat-label {
   font-size: 9px;
-  color: var(--color-text-muted);
+  color: #94a3b8;
 }
 
 .calendar-legend {
@@ -1185,7 +1185,7 @@ function totalHours(logs: WorkLog[]): string {
   align-items: center;
   gap: 4px;
   font-size: 9px;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 .legend-dot {
@@ -1195,15 +1195,15 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .worked-dot {
-  background: var(--color-success);
+  background: #22c55e;
 }
 
 .leave-dot {
-  background: var(--color-warning);
+  background: #f59e0b;
 }
 
 .holiday-dot {
-  background: var(--color-blue);
+  background: #3b82f6;
 }
 
 .weekend-label {
@@ -1221,8 +1221,8 @@ function totalHours(logs: WorkLog[]): string {
 .calendar-week-header {
   padding-top: 7px;
   padding-bottom: 7px;
-  border-top: 1px solid var(--color-border-light);
-  border-bottom: 1px solid var(--color-border-light);
+  border-top: 1px solid #edf0f5;
+  border-bottom: 1px solid #edf0f5;
 }
 
 .calendar-weekday {
@@ -1230,7 +1230,7 @@ function totalHours(logs: WorkLog[]): string {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.07em;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 .weekend-heading {
@@ -1243,7 +1243,7 @@ function totalHours(logs: WorkLog[]): string {
   padding: 8px 9px;
   border: 1px solid #cfd5df;
   border-radius: 7px;
-  background: var(--color-surface);
+  background: #ffffff;
   cursor: pointer;
   transition: 0.15s ease;
 }
@@ -1275,7 +1275,7 @@ function totalHours(logs: WorkLog[]): string {
   bottom: 9px;
   width: 2px;
   border-radius: 0 3px 3px 0;
-  background: var(--color-success);
+  background: #22c55e;
 }
 
 .leave-cell {
@@ -1287,7 +1287,7 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .today-cell {
-  border: 2px solid var(--color-purple);
+  border: 2px solid #7c3aed;
 }
 
 .calendar-day-number {
@@ -1296,14 +1296,14 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .today-number {
-  color: var(--color-purple);
+  color: #7c3aed;
 }
 
 .today-pill {
   padding: 2px 4px;
   border-radius: 3px;
-  background: var(--color-purple-light);
-  color: var(--color-purple);
+  background: #f3e8ff;
+  color: #7c3aed;
   font-size: 7px;
   font-weight: 800;
 }
@@ -1320,8 +1320,8 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .status-worked {
-  color: var(--color-success);
-  background: var(--color-success-light);
+  color: #22c55e;
+  background: #ecfdf3;
 }
 
 .status-weekend {
@@ -1330,13 +1330,13 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .status-leave {
-  color: var(--color-warning);
-  background: var(--color-warning-light);
+  color: #f59e0b;
+  background: #fffbeb;
 }
 
 .status-holiday {
-  color: var(--color-blue);
-  background: var(--color-info-light);
+  color: #3b82f6;
+  background: #eff6ff;
 }
 
 .calendar-work-summary {
@@ -1346,11 +1346,11 @@ function totalHours(logs: WorkLog[]): string {
   margin-top: 6px;
   font-size: 9px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 .calendar-work-summary span {
-  color: var(--color-text-muted);
+  color: #94a3b8;
 }
 
 .activity-dots {
@@ -1363,7 +1363,7 @@ function totalHours(logs: WorkLog[]): string {
   width: 11px;
   height: 2px;
   border-radius: 3px;
-  background: var(--color-purple);
+  background: #7c3aed;
 }
 
 .selected-cell {
@@ -1392,17 +1392,17 @@ function totalHours(logs: WorkLog[]): string {
   gap: 5px;
   min-height: 32px;
   padding: 5px;
-  border: 1px solid var(--color-border);
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   font-size: 9px;
-  color: var(--color-text-secondary);
+  color: #64748b;
   cursor: pointer;
 }
 
 .compact-status-active {
-  color: var(--color-purple);
-  background: var(--color-purple-light);
-  border-color: var(--color-purple);
+  color: #7c3aed;
+  background: #f3e8ff;
+  border-color: #7c3aed;
   font-weight: 700;
 }
 
@@ -1416,7 +1416,7 @@ function totalHours(logs: WorkLog[]): string {
   align-items: flex-start;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid #edf0f5;
 }
 
 .activity-task-icon {
@@ -1426,8 +1426,8 @@ function totalHours(logs: WorkLog[]): string {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: var(--color-purple);
-  background: var(--color-purple-light);
+  color: #7c3aed;
+  background: #f3e8ff;
 }
 
 .compact-task-name {
@@ -1454,7 +1454,7 @@ function totalHours(logs: WorkLog[]): string {
   justify-content: center;
   gap: 7px;
   padding-top: 18px;
-  color: var(--color-text-muted);
+  color: #94a3b8;
   font-size: 11px;
 }
 
@@ -1467,17 +1467,17 @@ function totalHours(logs: WorkLog[]): string {
   min-width: 58px;
   padding: 6px;
   text-align: center;
-  border: 1px solid var(--color-border);
+  border: 1px solid #e5e7eb;
   border-radius: 7px;
   cursor: pointer;
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
+  color: #64748b;
+  background: #ffffff;
 }
 
 .date-chip-active {
   color: white;
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: #6c63ff;
+  border-color: #6c63ff;
 }
 
 .date-chip-number {
@@ -1486,8 +1486,8 @@ function totalHours(logs: WorkLog[]): string {
 }
 
 .reminder-banner {
-  color: var(--color-text);
-  background: var(--color-warning-light);
+  color: #111827;
+  background: #fffbeb;
   border: 1px solid #f7dda4;
 }
 
@@ -1510,7 +1510,7 @@ function totalHours(logs: WorkLog[]): string {
   justify-content: space-between;
   font-size: 10px;
   font-weight: 650;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 .compact-subtasks {
@@ -1518,7 +1518,7 @@ function totalHours(logs: WorkLog[]): string {
   flex-wrap: wrap;
   gap: 2px 12px;
   padding-top: 5px;
-  border-top: 1px solid var(--color-border-light);
+  border-top: 1px solid #edf0f5;
 }
 
 .empty-card {
@@ -1539,7 +1539,7 @@ function totalHours(logs: WorkLog[]): string {
 .field-label {
   font-size: 11px;
   font-weight: 650;
-  color: var(--color-text-secondary);
+  color: #64748b;
 }
 
 @media (max-width: 850px) {

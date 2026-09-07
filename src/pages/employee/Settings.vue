@@ -43,7 +43,7 @@
               <q-item>
                 <q-item-section>
                   <q-item-label>Dark Mode</q-item-label>
-                  <q-item-label caption>Use dark theme</q-item-label>
+                  <q-item-label caption>Uses dark theme</q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-toggle :model-value="darkMode" color="primary" @update:model-value="setDarkMode" />

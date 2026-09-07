@@ -1,21 +1,42 @@
 <template>
-  <q-card flat bordered class="stat-card q-pa-md">
-    <div class="row items-start justify-between">
-      <q-avatar size="44px" :style="{ background: background }">
-        <q-icon :name="icon" :style="{ color: color }" size="22px" />
-      </q-avatar>
-      <div class="stat-trend" :class="positive ? 'text-positive' : 'text-grey-6'">
-        {{ trend }}
+  <q-card flat class="stat-card rounded-borders q-pa-md shadow-1">
+    <div class="row justify-between items-center q-mb-xs">
+      <div class="text-grey-7 text-caption text-weight-medium">
+        {{ label }}
       </div>
+
+      <q-avatar
+        size="24px"
+        :style="{
+          background: background,
+          color: color,
+        }"
+      >
+        <q-icon :name="icon" size="16px" />
+      </q-avatar>
     </div>
-    <div class="text-h4 text-weight-bold q-mt-md">
+
+    <div
+      class="text-h4 text-weight-bold"
+      :style="{ color: color, lineHeight: '1' }"
+    >
       {{ value }}
     </div>
-    <div class="text-body2 text-weight-medium q-mt-xs">
-      {{ label }}
-    </div>
-    <div class="text-caption text-grey-6 q-mt-xs">
-      {{ description }}
+
+    <div
+      class="row items-center text-grey-6"
+      style="font-size: 11px; margin-top: 6px"
+    >
+      <span
+        class="stat-trend"
+        :class="positive ? 'text-positive' : 'text-grey-6'"
+      >
+        {{ trend }}
+      </span>
+
+      <span v-if="description" class="q-ml-xs">
+        {{ description }}
+      </span>
     </div>
   </q-card>
 </template>
@@ -37,19 +58,20 @@ defineProps<Props>();
 
 <style scoped>
 .stat-card {
-  border-radius: 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 14px;
+  min-height: 112px;
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(30, 50, 90, 0.1) !important;
 }
 
 .stat-trend {
-  font-size: 12px;
   font-weight: 500;
 }
 </style>

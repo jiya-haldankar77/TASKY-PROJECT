@@ -44,11 +44,11 @@ defineEmits(['create']);
 .quick-add-title {
   font-size: 18px;
   font-weight: 600;
-  color: #263238;
+  color: #ffffff;
 }
 
 .quick-add-subtitle {
   font-size: 14px;
-  color: #738198;
+  color: #ffffff;
 }
 </style>

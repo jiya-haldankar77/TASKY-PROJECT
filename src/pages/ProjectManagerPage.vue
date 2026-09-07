@@ -55,8 +55,8 @@
       style="flex: 0 0 auto"
     >
       <q-tab name="overview" label="Overview" icon="dashboard" />
-      <q-tab name="completed" label="Completed" icon="check_circle" />
       <q-tab name="insights" label="Insights" icon="insights" />
+      <q-tab name="completed" label="Completed" icon="check_circle" />
     </q-tabs>
 
     <q-tab-panels

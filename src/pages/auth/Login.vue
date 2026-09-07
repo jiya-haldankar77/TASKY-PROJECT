@@ -15,12 +15,25 @@
           class="q-mb-md"
         />
 
-        <q-input
-          v-model="form.id"
-          outlined
-          :label="form.role === 'Project Manager' ? 'Manager ID' : 'Employee ID'"
-          class="q-mb-md"
-        />
+<div class="row items-center q-gutter-sm q-mb-md">
+  <!-- ID Prefix -->
+  <q-input
+    :model-value="form.role === 'Project Manager' ? 'PM' : 'EMP'"
+    outlined
+    readonly
+    dense
+    style="width: 75px"
+  />
+
+  <!-- ID Number -->
+  <q-input
+    v-model="form.id"
+    outlined
+    :label="form.role === 'Project Manager' ? 'Manager ID' : 'Employee ID'"
+    placeholder="001"
+    class="col"
+  />
+</div>
 
         <q-input
           v-model="form.password"
@@ -255,21 +268,25 @@ const handleLogin = async () => {
 
   loading.value = true;
 
-  try {
-    // Call backend API directly
-    const response = await fetch('http://localhost:3001/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        identifier: form.id,
-        password: form.password,
-      }),
-    });
+try {
+  // Create the full ID based on the selected role
+  const prefix = form.role === 'Project Manager' ? 'PM' : 'EMP';
+  const identifier = `${prefix}${form.id}`;
 
-    const result = await response.json();
-    console.log('Login result:', result);
+  // Call backend API directly
+  const response = await fetch('http://localhost:3001/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      identifier: identifier,
+      password: form.password,
+    }),
+  });
+
+  const result = await response.json();
+  console.log('Login result:', result);
 
     if (result.success && result.user) {
       const selectedRole = form.role === 'Project Manager' ? 'pm' : 'employee';

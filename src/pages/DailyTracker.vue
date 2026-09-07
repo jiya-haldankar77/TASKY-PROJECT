@@ -233,6 +233,7 @@ const statusOptions = ['not-started', 'in-progress', 'completed', 'on-hold'];
 const dailyTasks = ref<DailyTask[]>([]);
 const currentPage = ref(1);
 const rowsPerPage = ref(1);
+const rowsPerPage = ref(4);
 const loading = ref(false);
 const projects = ref<any[]>([]);
 const paginatedDailyTasks = computed(() => dailyTasks.value.slice((currentPage.value - 1) * rowsPerPage.value, currentPage.value * rowsPerPage.value));
