@@ -1532,7 +1532,7 @@ app.post('/api/employee/work-log', async (req, res) => {
     const { task_id, hours_spent, work_completed, status, user_id } = req.body;
     const userId = user_id || 1; // Mock user ID for testing
 
-    if (!task_id || !hours_spent) {
+    if (task_id === undefined || hours_spent === undefined) {
       return res.status(400).json({ success: false, error: 'task_id and hours_spent are required' });
     }
 

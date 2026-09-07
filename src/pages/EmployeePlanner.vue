@@ -227,8 +227,20 @@
                   </div>
                 </div>
 
-                <div v-if="selectedDayActivity.length" class="text-caption text-grey-6">
-                  {{ totalHours(selectedDayActivity) }}h total
+                <div class="row items-center q-gutter-x-sm">
+                  <div v-if="selectedDayActivity.length" class="text-caption text-grey-6">
+                    {{ totalHours(selectedDayActivity) }}h total
+                  </div>
+                  <q-btn
+                    unelevated
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="add"
+                    label="Add Log"
+                    @click="openCreateLogDialog"
+                    class="q-px-sm"
+                  />
                 </div>
               </div>
 
@@ -269,7 +281,15 @@
                 <q-icon name="event_note" size="25px" />
 
                 <span> No work logged for this day </span>
-
+                <q-btn
+                  unelevated
+                  no-caps
+                  color="primary"
+                  icon="add"
+                  label="Add Work Entry"
+                  class="q-mt-md"
+                  @click="openCreateLogDialog"
+                />
               </div>
 
                 <!-- Submit to PM moved to Save Day Status above -->
@@ -280,6 +300,35 @@
     </div>
 
 
+
+    <!-- =========================================================
+         CREATE WORK LOG DIALOG
+    ========================================================= -->
+
+    <q-dialog v-model="showCreateLogDialog">
+      <q-card style="min-width: 400px; max-width: 600px">
+        <q-card-section>
+          <div class="text-h6">Add Work Entry for {{ selectedDateFormatted }}</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-form @submit="submitWorkLog">
+            <q-input
+              v-model="newLog.workCompleted"
+              label="Work Note"
+              outlined
+              type="textarea"
+              rows="4"
+              class="q-mb-md"
+              :rules="[(val) => !!val || 'Please add a note']"
+            />
+          </q-form>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn color="primary" label="Submit" @click="submitWorkLog" :loading="isSubmittingLog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- =========================================================
          SAVED DIALOG
@@ -611,6 +660,59 @@ onMounted(() => {
 });
 
 
+
+/* ============================================================
+   CREATE LOG DIALOG
+============================================================ */
+
+const showCreateLogDialog = ref(false);
+const isSubmittingLog = ref(false);
+
+const newLog = ref({
+  workCompleted: '',
+});
+
+function openCreateLogDialog() {
+  newLog.value = {
+    workCompleted: '',
+  };
+  showCreateLogDialog.value = true;
+}
+
+async function submitWorkLog() {
+  if (!newLog.value.workCompleted || !authStore.user?.id) return;
+
+  isSubmittingLog.value = true;
+  try {
+    const response = await fetch('http://localhost:3001/api/employee/work-log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+      body: JSON.stringify({
+        task_id: null,
+        user_id: authStore.user.id,
+        log_date: selectedDate.value,
+        status: 'completed',
+        work_completed: newLog.value.workCompleted,
+        remaining_work: '',
+        comments: '',
+        hours_spent: 0,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      await fetchWorkLogs();
+      showCreateLogDialog.value = false;
+    }
+  } catch (error) {
+    console.error('Error submitting work log:', error);
+  } finally {
+    isSubmittingLog.value = false;
+  }
+}
 
 /* ============================================================
    SAVE DIALOG
