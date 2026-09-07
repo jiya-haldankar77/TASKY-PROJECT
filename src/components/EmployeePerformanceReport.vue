@@ -30,8 +30,24 @@
         />
       </q-card-section>
 
+      <q-tabs
+        v-model="activeTab"
+        dense
+        class="text-grey bg-white shadow-1 z-top"
+        active-color="primary"
+        indicator-color="primary"
+        align="justify"
+        narrow-indicator
+        style="flex: 0 0 auto"
+      >
+        <q-tab name="performance" label="Performance Details" />
+        <q-tab name="daily_logs" label="Daily Logs" />
+      </q-tabs>
+
       <!-- Main Content -->
-      <div class="row q-col-gutter-md q-pa-md" style="flex: 1 1 0; overflow-y: auto">
+      <q-tab-panels v-model="activeTab" animated class="bg-transparent" style="flex: 1 1 0; overflow-y: auto;">
+        <q-tab-panel name="performance" class="q-pa-none">
+          <div class="row q-col-gutter-md q-pa-md">
         <!-- Left Column: Stats & Charts -->
         <div class="col-8 column q-gutter-y-md">
           <!-- Overall Performance Meter -->
@@ -101,45 +117,37 @@
                     ><q-icon name="assignment" color="blue" size="xs"
                   /></q-item-section>
                   <q-item-section class="text-grey-7">Total Tasks</q-item-section>
-                  <q-item-section side class="text-weight-bold">{{
-                    performanceData.totalTasks || 0
-                  }}</q-item-section>
+                  <q-item-section side class="text-weight-bold">{{ performanceData.totalTasks || 0 }}</q-item-section>
                 </q-item>
                 <q-item class="q-px-none">
                   <q-item-section avatar
                     ><q-icon name="check_circle" color="green" size="xs"
                   /></q-item-section>
                   <q-item-section class="text-grey-7">Completed</q-item-section>
-                  <q-item-section side class="text-weight-bold text-green">{{
-                    performanceData.completedTasks || 0
-                  }}</q-item-section>
+                  <q-item-section side class="text-weight-bold text-green">{{ performanceData.completedTasks || 0 }}</q-item-section>
                 </q-item>
                 <q-item class="q-px-none">
                   <q-item-section avatar
                     ><q-icon name="schedule" color="orange" size="xs"
                   /></q-item-section>
                   <q-item-section class="text-grey-7">Overdue</q-item-section>
-                  <q-item-section side class="text-weight-bold text-orange">{{
-                    performanceData.overdueTasks || 0
-                  }}</q-item-section>
+                  <q-item-section side class="text-weight-bold text-orange">{{ performanceData.overdueTasks || 0 }}</q-item-section>
                 </q-item>
                 <q-item class="q-px-none">
                   <q-item-section avatar
                     ><q-icon name="access_time" color="purple" size="xs"
                   /></q-item-section>
                   <q-item-section class="text-grey-7">Hours Logged</q-item-section>
-                  <q-item-section side class="text-weight-bold"
-                    >{{ performanceData.hoursLogged || 0 }}h</q-item-section
-                  >
+                  <q-item-section side class="text-weight-bold">{{ performanceData.hoursLogged || 0 }}h</q-item-section>
                 </q-item>
                 <q-item class="q-px-none">
                   <q-item-section avatar
                     ><q-icon name="trending_up" color="indigo" size="xs"
                   /></q-item-section>
                   <q-item-section class="text-grey-7">Utilization</q-item-section>
-                  <q-item-section side class="text-weight-bold"
-                    >{{ performanceData.utilization || 0 }}%</q-item-section
-                  >
+                  <q-item-section side class="text-weight-bold">
+                    {{ performanceData.utilization || 0 }}%
+                  </q-item-section>
                 </q-item>
               </q-list>
             </q-card-section>
@@ -149,11 +157,7 @@
           <q-card flat bordered class="bg-white">
             <q-card-section>
               <div class="text-subtitle1 text-weight-bold q-mb-sm">Recent Tasks</div>
-              <q-list
-                v-if="performanceData.recentTasks && performanceData.recentTasks.length > 0"
-                separator
-                dense
-              >
+              <q-list v-if="performanceData.recentTasks && performanceData.recentTasks.length > 0" separator dense>
                 <q-item
                   v-for="task in performanceData.recentTasks.slice(0, 5)"
                   :key="task.id"
@@ -184,30 +188,57 @@
             </q-card-section>
           </q-card>
 
-          <!-- Daily Work Logs -->
-          <q-card flat bordered class="bg-white">
+        </div>
+        </div>
+      </q-tab-panel>
+
+      <q-tab-panel name="daily_logs" class="q-pa-md">
+        <div class="column q-gutter-y-md" style="max-width: 800px; margin: 0 auto;">
+          <q-card v-for="sub in employeeSubmissions" :key="sub.id" flat bordered class="bg-white">
             <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Daily Work Logs</div>
-              <q-list v-if="employeeWorkLogs.length > 0" separator dense>
-                <q-item v-for="log in employeeWorkLogs.slice(0, 5)" :key="log.id" class="q-py-sm column">
-                  <div class="row items-center justify-between full-width">
-                    <div class="text-weight-bold text-body2">{{ log.task_title }}</div>
-                    <div class="text-caption text-grey">{{ log.log_date }}</div>
-                  </div>
-                  <div class="text-caption q-mt-xs" style="white-space: pre-wrap">
-                    {{ log.work_completed }}
-                  </div>
-                  <div class="row items-center justify-between full-width q-mt-xs">
-                    <q-badge :color="log.status === 'completed' ? 'green' : (log.status === 'in-progress' ? 'blue' : 'orange')" :label="log.status" style="font-size: 9px" />
-                    <div class="text-caption text-grey">{{ log.hours_spent }}h logged</div>
-                  </div>
-                </q-item>
-              </q-list>
-              <div v-else class="text-caption text-grey-6 q-pa-md text-center">No work logs found</div>
+              <div class="row justify-between items-center q-mb-sm">
+                <div class="text-subtitle1 text-weight-bold">
+                  {{ new Date(sub.log_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }}
+                </div>
+                <div class="row items-center q-gutter-x-sm">
+                  <q-badge :color="sub.day_status === 'worked' ? 'green' : (sub.day_status === 'leave' ? 'orange' : (sub.day_status === 'holiday' ? 'blue' : 'grey'))" :label="sub.day_status ? sub.day_status.toUpperCase() : 'WORKED'" />
+                  <q-badge :color="sub.status === 'reviewed' ? 'purple' : 'blue'" :label="sub.status.toUpperCase()" />
+                </div>
+              </div>
+              <q-separator class="q-mb-sm" />
+              
+              <!-- Check for logs using the formatted date key -->
+              <div v-if="employeeLogsByDate[getDateKey(sub.log_date)] && employeeLogsByDate[getDateKey(sub.log_date)].length > 0">
+                <q-list separator dense>
+                  <q-item v-for="log in employeeLogsByDate[getDateKey(sub.log_date)]" :key="log.id" class="q-py-sm column">
+                    <div class="row items-center justify-between full-width">
+                      <div class="text-weight-bold text-body2">{{ log.task_title || 'Manual Entry' }}</div>
+                      <div class="text-caption text-grey">{{ log.hours_spent }}h</div>
+                    </div>
+                    <div class="text-caption q-mt-xs text-grey-8" style="white-space: pre-wrap">
+                      {{ log.work_completed }}
+                    </div>
+                  </q-item>
+                </q-list>
+              </div>
+              <div v-else class="text-caption text-grey-6 text-center q-pa-sm">
+                No work logs for this day.
+              </div>
+              
+              <div v-if="sub.pm_comment" class="q-mt-md q-pa-sm bg-grey-2 rounded-borders">
+                <div class="text-caption text-weight-bold text-primary q-mb-xs">PM Feedback:</div>
+                <div class="text-caption">{{ sub.pm_comment }}</div>
+              </div>
             </q-card-section>
           </q-card>
+          
+          <div v-if="employeeSubmissions.length === 0" class="text-center text-grey-6 q-pa-xl">
+            <q-icon name="event_note" size="48px" class="q-mb-md" style="opacity: 0.5" />
+            <div>No daily logs submitted yet</div>
+          </div>
         </div>
-      </div>
+      </q-tab-panel>
+    </q-tab-panels>
     </q-card>
 
     <!-- Loading State -->
@@ -230,7 +261,16 @@ const emit = defineEmits(['update:modelValue']);
 
 const loading = ref(false);
 const performanceData = ref<any>({});
-const employeeWorkLogs = ref<any[]>([]);
+const employeeSubmissions = ref<any[]>([]);
+const employeeLogsByDate = ref<any>({});
+const activeTab = ref('performance');
+
+function getDateKey(dateStr: string): string {
+  if (!dateStr) return '';
+  const iso = new Date(dateStr).toISOString();
+  const parts = iso.split('T');
+  return parts && parts.length > 0 ? (parts[0] as string) : '';
+}
 
 const meterChart = ref<HTMLElement>();
 const pieChart = ref<HTMLElement>();
@@ -297,7 +337,8 @@ async function loadPerformanceData() {
     const logsResponse = await fetch(`http://localhost:3001/api/pm/employee-performance/${props.employee.id}/work-logs`);
     const logsData = await logsResponse.json();
     if (logsData.success) {
-      employeeWorkLogs.value = logsData.logs || [];
+      employeeSubmissions.value = logsData.submissions || [];
+      employeeLogsByDate.value = logsData.logsByDate || {};
     }
   } catch (error) {
     console.error('Error loading performance data:', error);

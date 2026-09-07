@@ -1294,28 +1294,38 @@ app.get('/api/pm/employee-performance/:userId', async (req, res) => {
   }
 });
 
-// GET /api/pm/employee-performance/:userId/work-logs - Get work logs for a specific employee for PM
+// GET /api/pm/employee-performance/:userId/work-logs - Get daily logs for a specific employee
 app.get('/api/pm/employee-performance/:userId/work-logs', async (req, res) => {
   try {
     const { userId } = req.params;
     const connection = await pool.getConnection();
     try {
-      const [logs] = await connection.execute(
-        `SELECT dwl.*, t.title AS task_title, p.name AS project_name, p.color AS project_color
-         FROM daily_work_log dwl
-         JOIN task t ON t.id = dwl.task_id
-         JOIN project p ON p.id = t.project_id
-         WHERE dwl.user_id = ?
-         ORDER BY dwl.log_date DESC
-         LIMIT 50`,
+      const [submissions] = await connection.execute(
+        `SELECT *, DATE_FORMAT(log_date, '%Y-%m-%d') as log_date FROM daily_log_compliance WHERE user_id = ? ORDER BY log_date DESC`,
         [userId]
       );
-      res.json({ success: true, logs });
+      
+      const logsByDate = {};
+      for (const sub of submissions) {
+        const dateStr = sub.log_date;
+        
+        const [logs] = await connection.execute(
+          `SELECT dwl.*, DATE_FORMAT(dwl.log_date, '%Y-%m-%d') as log_date, t.title AS task_title, p.name AS project_name, p.color AS project_color
+           FROM daily_work_log dwl
+           LEFT JOIN task t ON t.id = dwl.task_id
+           LEFT JOIN project p ON p.id = t.project_id
+           WHERE dwl.user_id = ? AND DATE(dwl.log_date) = ?`,
+          [userId, dateStr]
+        );
+        logsByDate[dateStr] = logs;
+      }
+
+      res.json({ success: true, submissions, logsByDate });
     } finally {
       connection.release();
     }
   } catch (error) {
-    console.error('Get employee work logs error:', error);
+    console.error('Get employee daily logs error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });

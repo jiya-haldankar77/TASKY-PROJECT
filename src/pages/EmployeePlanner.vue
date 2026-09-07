@@ -167,16 +167,6 @@
                   </div>
                 </div>
 
-                <q-btn
-                  v-if="selectedDayStatus === 'worked'"
-                  unelevated
-                  dense
-                  no-caps
-                  color="primary"
-                  icon="add"
-                  label="Add Work"
-                  @click="openAddWorkDialog"
-                />
               </div>
 
               <!-- STATUS OPTIONS -->
@@ -280,15 +270,6 @@
 
                 <span> No work logged for this day </span>
 
-                <q-btn
-                  v-if="selectedDayStatus === 'worked'"
-                  flat
-                  dense
-                  no-caps
-                  color="primary"
-                  label="Add Work"
-                  @click="openAddWorkDialog"
-                />
               </div>
 
                 <!-- Submit to PM moved to Save Day Status above -->
@@ -298,54 +279,7 @@
       </div>
     </div>
 
-    <!-- =========================================================
-         ADD WORK DIALOG
-    ========================================================= -->
 
-    <q-dialog v-model="showAddWorkDialog">
-      <q-card class="add-work-dialog">
-        <q-card-section>
-          <div class="row items-center justify-between">
-            <div>
-              <div class="text-h6 text-weight-bold">Add Work Entry</div>
-
-              <div class="text-caption text-grey-6">
-                {{ selectedDateFormatted }}
-              </div>
-            </div>
-
-            <q-btn flat round icon="close" v-close-popup />
-          </div>
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-section>
-          <q-input
-            v-model="newWorkEntry.note"
-            outlined
-            dense
-            type="textarea"
-            autogrow
-            label="Note / Comment"
-            class="q-mt-sm"
-          />
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
-
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            label="Add Work Entry"
-            :disable="!newWorkEntry.note?.trim()"
-            @click="addWorkEntry"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
 
     <!-- =========================================================
          SAVED DIALOG
@@ -676,28 +610,7 @@ onMounted(() => {
   fetchWorkLogs();
 });
 
-/* ============================================================
-   ADD WORK
-============================================================ */
 
-const showAddWorkDialog = ref(false);
-
-const newWorkEntry = ref<
-  WorkLog & {
-    priority: string;
-    status: TaskStatus;
-  }
->({
-  id: 0,
-  taskTitle: '',
-  title: '',
-  project: '',
-  progress: 0,
-  hours: 1,
-  note: '',
-  priority: 'Medium',
-  status: 'Pending',
-});
 
 /* ============================================================
    SAVE DIALOG
@@ -833,11 +746,12 @@ async function submitDayToPM() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authStore.token}`
         },
-      body: JSON.stringify({ user_id: authStore.user?.id, log_date: selectedDate.value })
+      body: JSON.stringify({ user_id: authStore.user?.id, log_date: selectedDate.value, day_status: selectedDayStatus.value })
     });
     const result = await response.json();
     if (result.success) {
       await fetchDayCompliance(selectedDate.value);
+      showSavedDialog.value = true;
     }
   } catch (err) {
     console.error('Error submitting day:', err);
@@ -1041,94 +955,7 @@ function totalHours(logs: WorkLog[]): string {
   return total.toFixed(1);
 }
 
-/* ============================================================
-   ADD WORK DIALOG
-============================================================ */
 
-function openAddWorkDialog() {
-  newWorkEntry.value = {
-    id: Date.now(),
-
-    taskTitle: '',
-
-    title: '',
-
-    project: '',
-
-    progress: 0,
-
-    hours: 1,
-
-    note: '',
-
-    priority: 'Medium',
-
-    status: 'Pending',
-  };
-
-  showAddWorkDialog.value = true;
-}
-
-/* ============================================================
-   ADD WORK ENTRY
-============================================================ */
-
-async function addWorkEntry() {
-  const date = selectedDate.value;
-
-  if (!authStore.user?.id) return;
-
-  try {
-    const parsedDate = parseDate(date);
-    // Format to YYYY-MM-DD avoiding timezone shift issues
-    const year = parsedDate.getFullYear();
-    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-    const day = String(parsedDate.getDate()).padStart(2, '0');
-    const isoDate = `${year}-${month}-${day}`;
-
-    // Create new daily work log entry
-    const response = await fetch('http://localhost:3001/api/daily-logs/work-log', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        user_id: authStore.user?.id,
-        log_date: isoDate,
-        work_completed: newWorkEntry.value.note || 'Manual activity log',
-        hours_spent: 0,
-        status: 'in-progress',
-      }),
-    });
-
-    const result = await response.json();
-    if (result.success) {
-      if (!workLogs.value[date]) {
-        workLogs.value[date] = [];
-      }
-
-      workLogs.value[date].push({
-        id: result.id || Date.now(),
-        taskTitle: newWorkEntry.value.title || newWorkEntry.value.taskTitle,
-        project: newWorkEntry.value.project,
-        progress: newWorkEntry.value.progress,
-        hours: Number(newWorkEntry.value.hours),
-        note: newWorkEntry.value.note,
-      });
-
-      dayStatuses.value[date] = 'worked';
-      selectedDayStatus.value = 'worked';
-      showAddWorkDialog.value = false;
-
-      fetchWorkLogs();
-    } else {
-      console.error('Failed to add work entry:', result.error);
-    }
-  } catch (error) {
-    console.error('Error adding work entry:', error);
-  }
-}
 
 
 

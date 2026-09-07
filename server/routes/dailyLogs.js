@@ -5,33 +5,7 @@ import { dbConfig } from '../db.config.js';
 const router = express.Router();
 const pool = mysql.createPool(dbConfig);
 
-// 1. Fetch daily logs and compliance status for a user & date
-router.get('/:userId/:date', async (req, res) => {
-  try {
-    const { userId, date } = req.params;
-    
-    // Get compliance status
-    const [complianceRows] = await pool.query(
-      'SELECT * FROM daily_log_compliance WHERE user_id = ? AND log_date = ?',
-      [userId, date]
-    );
-    
-    // Get actual logs
-    const [logRows] = await pool.query(
-      'SELECT d.*, t.title as task_title FROM daily_work_log d LEFT JOIN task t ON d.task_id = t.id WHERE d.user_id = ? AND d.log_date = ?',
-      [userId, date]
-    );
-    
-    res.json({
-      success: true,
-      compliance: complianceRows.length > 0 ? complianceRows[0] : null,
-      logs: logRows
-    });
-  } catch (error) {
-    console.error('Error fetching daily logs:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+
 
 // 2. Add or update manual/automatic work log
 router.post('/work-log', async (req, res) => {
@@ -61,7 +35,7 @@ router.post('/work-log', async (req, res) => {
 // 3. Submit day to PM
 router.post('/submit', async (req, res) => {
   try {
-    const { user_id, log_date } = req.body;
+    const { user_id, log_date, day_status } = req.body;
     const [existing] = await pool.query(
       'SELECT status FROM daily_log_compliance WHERE user_id = ? AND log_date = ?',
       [user_id, log_date]
@@ -70,10 +44,10 @@ router.post('/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Day already submitted' });
     }
     await pool.query(
-      `INSERT INTO daily_log_compliance (user_id, log_date, status)
-       VALUES (?, ?, 'submitted')
-       ON DUPLICATE KEY UPDATE status = 'submitted'`,
-      [user_id, log_date]
+      `INSERT INTO daily_log_compliance (user_id, log_date, status, day_status)
+       VALUES (?, ?, 'submitted', ?)
+       ON DUPLICATE KEY UPDATE status = 'submitted', day_status = ?`,
+      [user_id, log_date, day_status || 'worked', day_status || 'worked']
     );
     res.json({ success: true, message: 'Day submitted for review' });
   } catch (error) {
@@ -86,7 +60,7 @@ router.post('/submit', async (req, res) => {
 router.get('/pm/pending', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT c.*, u.first_name, u.last_name, u.avatar
+      `SELECT c.*, DATE_FORMAT(c.log_date, '%Y-%m-%d') as log_date, u.first_name, u.last_name, u.avatar
        FROM daily_log_compliance c
        JOIN user u ON c.user_id = u.id
        WHERE c.status = 'submitted'
@@ -97,7 +71,9 @@ router.get('/pm/pending', async (req, res) => {
     const submissions = [];
     for (let row of rows) {
       const [logs] = await pool.query(
-        'SELECT d.*, t.title as task_title FROM daily_work_log d LEFT JOIN task t ON d.task_id = t.id WHERE d.user_id = ? AND d.log_date = ?',
+        `SELECT d.*, DATE_FORMAT(d.log_date, '%Y-%m-%d') as log_date, t.title as task_title 
+         FROM daily_work_log d LEFT JOIN task t ON d.task_id = t.id 
+         WHERE d.user_id = ? AND DATE(d.log_date) = ?`,
         [row.user_id, row.log_date]
       );
       submissions.push({
@@ -135,6 +111,34 @@ router.post('/review', async (req, res) => {
     res.json({ success: true, message: 'Review submitted' });
   } catch (error) {
     console.error('Error submitting review:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 1. Fetch daily logs and compliance status for a user & date
+router.get('/:userId/:date', async (req, res) => {
+  try {
+    const { userId, date } = req.params;
+    
+    // Get compliance status
+    const [complianceRows] = await pool.query(
+      'SELECT * FROM daily_log_compliance WHERE user_id = ? AND log_date = ?',
+      [userId, date]
+    );
+    
+    // Get actual logs
+    const [logRows] = await pool.query(
+      'SELECT d.*, t.title as task_title FROM daily_work_log d LEFT JOIN task t ON d.task_id = t.id WHERE d.user_id = ? AND d.log_date = ?',
+      [userId, date]
+    );
+    
+    res.json({
+      success: true,
+      compliance: complianceRows.length > 0 ? complianceRows[0] : null,
+      logs: logRows
+    });
+  } catch (error) {
+    console.error('Error fetching daily logs:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
